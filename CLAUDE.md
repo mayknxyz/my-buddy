@@ -4,14 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Configurable Persona
 
-my-buddy uses a configurable AI persona defined in `buddy.config.ts`. The persona is activated by `/mybuddy.start` and deactivated by `/mybuddy.end`.
+my-buddy uses a configurable AI persona defined in `buddy.config.ts`.
+The persona is activated by `/mybuddy.start` and deactivated by `/mybuddy.end`.
 
 ### When the Persona is Active
 
 **Reply format:**
-- Prefix EVERY response with the configured persona name followed by `: `.
+
+- Prefix EVERY response with the configured persona name followed by `:` and a space.
 
 **Tone** is determined by `buddy.config.ts`:
+
 - `blunt` — Direct. No filler. No "Great question!" Challenges complacency.
 - `friendly` — Warm and encouraging, but still focused on getting things done.
 - `professional` — Neutral, structured, business-appropriate.
@@ -19,6 +22,7 @@ my-buddy uses a configurable AI persona defined in `buddy.config.ts`. The person
 If `persona.customPrompt` is set in config, use it as the full persona instructions. Always respect `persona.boundaries`.
 
 **Behavior:**
+
 - Tracks what the user said they'd do and holds them to it.
 - Flags overdue items unprompted.
 - Does not sugarcoat project status.
@@ -31,7 +35,10 @@ Outside of `/mybuddy.start` and `/mybuddy.end`, Claude Code operates normally. T
 
 ## Project Overview
 
-Open-source personal work dashboard for managing accounts, contacts, deals, projects, tasks, knowledge base, meetings, and journals. Built with Astro 5.x, TypeScript (strict), Tailwind CSS v4, and Bun. All data stored in markdown files with frontmatter. Keyboard-first, local-only.
+Open-source personal work dashboard for managing accounts, contacts, deals,
+projects, tasks, knowledge base, meetings, and journals.
+Built with Astro 5.x, TypeScript (strict), Tailwind CSS v4, and Bun.
+All data stored in markdown files with frontmatter. Keyboard-first, local-only.
 
 ## Commands
 
@@ -57,26 +64,34 @@ Eight markdown-based collections with Zod validation in `src/content.config.ts`:
   - Frontmatter: uid, first_name, last_name, email?, phone?, role?, account (slug ref), is_primary
 
 - **deals/** — Sales pipeline (`kebab-case.md`)
-  - Frontmatter: uid, account (slug ref), contact? (slug ref), stage (discovery|proposal|negotiation|closed-won|closed-lost), value?, expected_close?, actual_close?, lost_reason?
+  - Frontmatter: uid, account (slug ref), contact? (slug ref),
+    stage (discovery|proposal|negotiation|closed-won|closed-lost),
+    value?, expected_close?, actual_close?, lost_reason?
 
 - **projects/** — Project tracking (`kebab-case.md`)
-  - Frontmatter: uid, account (slug ref), status (planning|in-progress|done|paused), start_date, deadline?, budget?, priority? (low|medium|high)
+  - Frontmatter: uid, account (slug ref),
+    status (planning|in-progress|done|paused),
+    start_date, deadline?, budget?, priority? (low|medium|high)
 
 - **tasks/** — Task management (`YYYY-MM-DD-task-name.md`)
-  - Frontmatter: uid, project (slug ref), status (todo|in-progress|done|blocked), priority (low|medium|high|urgent), due?, tags[]?
+  - Frontmatter: uid, project (slug ref),
+    status (todo|in-progress|done|blocked),
+    priority (low|medium|high|urgent), due?, tags[]?
 
 - **kb/** — Knowledge base articles (`kebab-case.md`)
   - Frontmatter: uid, tags[]?, updated?
 
 - **meetings/** — Meeting notes (`YYYY-MM-DD-meeting-name.md`)
-  - Frontmatter: uid, date, attendees[], type (discovery|standup|review|planning|retrospective|other), account? (slug ref), project? (slug ref), action_items[]?
+  - Frontmatter: uid, date, attendees[],
+    type (discovery|standup|review|planning|retrospective|other),
+    account? (slug ref), project? (slug ref), action_items[]?
 
 - **journals/** — Journal entries (`YYYY-MM-DD.md`)
   - Frontmatter: uid, date, mood? (great|good|neutral|bad|terrible), tags[]?, projects[]? (slug refs)
 
 ### Component Structure (Atomic Design)
 
-```
+```text
 src/components/
 ├── atoms/         # Badge, FilterSelect, KeyToast, SearchInput, SiblingNav
 ├── molecules/     # Backlinks, Breadcrumb, FilterBar, RelatedContent
@@ -101,12 +116,14 @@ src/components/
 Content uses `[[slug]]` syntax in markdown body. Implemented via a custom remark plugin (`src/plugins/wiki-links/`).
 
 **Syntax:**
+
 - `[[slug]]` — resolves via priority order (accounts > contacts > projects > deals > tasks > kb > meetings > journals)
 - `[[slug|display text]]` — custom display text
 - `[[collection/slug]]` — explicit collection
 - `[[collection/slug|text]]` — explicit collection + custom text
 
 **How it works:**
+
 - Pre-build step (`bun build:index`) generates `src/data/wiki-link-index.json` and `src/data/backlink-index.json`
 - Remark plugin transforms `[[slug]]` → `<a class="wiki-link">`
 - Broken links render as `<span class="wiki-link-broken">`
@@ -116,7 +133,8 @@ Content uses `[[slug]]` syntax in markdown body. Implemented via a custom remark
 
 Vim-style keyboard shortcuts (`src/scripts/keyboard.ts`):
 
-- `g z` dashboard, `g a` accounts, `g c` contacts, `g d` deals, `g p` projects, `g t` tasks, `g k` kb, `g m` meetings, `g j` journals
+- `g z` dashboard, `g a` accounts, `g c` contacts, `g d` deals,
+  `g p` projects, `g t` tasks, `g k` kb, `g m` meetings, `g j` journals
 - `j/k` next/prev item in lists
 - `Enter` open selected item
 - `/` global search (Pagefind)
@@ -125,7 +143,7 @@ Vim-style keyboard shortcuts (`src/scripts/keyboard.ts`):
 
 ## Content Relationships
 
-```
+```text
 accounts → contacts (via contact.account)
 accounts → deals (via deal.account)
 accounts → projects (via project.account)
@@ -148,7 +166,7 @@ Conversion is manual (edit account frontmatter `type: lead` → `type: client`).
 
 Each collection has `.create`, `.view`, `.edit`, `.list`, `.delete`:
 
-```
+```text
 /mybuddy.account.{create,view,edit,list,delete}
 /mybuddy.contact.{create,view,edit,list,delete}
 /mybuddy.deal.{create,view,edit,list,delete}
@@ -171,6 +189,7 @@ Each collection has `.create`, `.view`, `.edit`, `.list`, `.delete`:
 ### Content Templates (.templates/)
 
 Copy these files to quickly create new content:
+
 - `account.md`, `contact.md`, `deal.md`, `project.md`
 - `task.md`, `kb.md`, `meeting.md`, `journal.md`
 

@@ -4,9 +4,11 @@ description: Deal pipeline snapshot — stages, values, expected closes, at-risk
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -30,7 +32,7 @@ Find deals where `expected_close` is in the past but stage is NOT `closed-won` o
 
 ### 4. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Pipeline | {today's date}
 ---

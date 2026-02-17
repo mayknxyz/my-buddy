@@ -4,9 +4,11 @@ description: Accounts and contacts with no recent meetings — suggest follow-up
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -25,11 +27,13 @@ If arguments contain a number, use that as the follow-up threshold in days. Defa
 
 ### 2. Identify Follow-Up Candidates
 
-Find active accounts where the most recent meeting date is older than the threshold (or no meeting exists). Prioritize accounts with open deals.
+Find active accounts where the most recent meeting date
+is older than the threshold (or no meeting exists).
+Prioritize accounts with open deals.
 
 ### 3. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Follow-Up List | {today's date} | Threshold: {N} days
 ---

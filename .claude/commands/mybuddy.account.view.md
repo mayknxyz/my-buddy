@@ -4,9 +4,11 @@ description: View an account entry in detail.
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -26,7 +28,7 @@ Read `src/content/accounts/{slug}.md`. If not found, try fuzzy matching against 
 
 Show a formatted summary:
 
-```
+```text
 ---
 {PERSONA NAME} | Account: {display name}
 ---

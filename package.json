@@ -2,6 +2,20 @@
   "name": "my-buddy",
   "type": "module",
   "version": "0.1.0",
+  "description": "Open-source personal assistant dashboard built with Astro, Bun, and Tailwind",
+  "author": "mayknxyz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mayknxyz/my-buddy.git"
+  },
+  "keywords": [
+    "dashboard",
+    "personal-assistant",
+    "astro",
+    "markdown",
+    "crm"
+  ],
   "scripts": {
     "dev": "astro dev",
     "build": "bun src/plugins/wiki-links/build-index.ts && astro build && pagefind --site dist",

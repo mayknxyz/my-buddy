@@ -4,3 +4,16 @@ dist/
 .env
 .env.*
 src/data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

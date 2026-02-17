@@ -4,9 +4,11 @@ description: Today's top 3 priorities based on due dates, priority level, and st
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -18,7 +20,8 @@ If arguments contain a project slug, filter tasks to that project only.
 
 ### 1. Gather Active Tasks
 
-Read all files in `src/content/tasks/`. Filter for `status: todo` or `status: in-progress`. Exclude `done` and `blocked`.
+Read all files in `src/content/tasks/`.
+Filter for `status: todo` or `status: in-progress`. Exclude `done` and `blocked`.
 
 ### 2. Score and Rank
 
@@ -36,7 +39,7 @@ Take the top 3 scoring tasks.
 
 ### 4. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Focus | {today's date}
 ---

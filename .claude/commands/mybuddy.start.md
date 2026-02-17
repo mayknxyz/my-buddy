@@ -4,9 +4,11 @@ description: Start a persona session — loads config, sets tone, greets the use
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -19,6 +21,7 @@ No special argument handling.
 ### 1. Load Config
 
 Read `buddy.config.ts`. Extract:
+
 - `persona.name` — the name you will use
 - `persona.tone` — blunt, friendly, or professional
 - `persona.customPrompt` — if non-empty, use this as your full persona instructions
@@ -35,7 +38,7 @@ Read `buddy.config.ts`. Extract:
 
 Output in this format:
 
-```
+```text
 ---
 {PERSONA NAME} | Session Started
 ---

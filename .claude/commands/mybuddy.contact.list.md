@@ -4,9 +4,11 @@ description: List all contact entries with optional filters.
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -28,7 +30,7 @@ If `$ARGUMENTS` contains filter expressions (field:value), filter the results.
 
 Show as a formatted table:
 
-```
+```text
 ---
 {PERSONA NAME} | Contacts ({count})
 ---
