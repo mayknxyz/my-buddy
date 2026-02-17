@@ -31,7 +31,7 @@ for collection in accounts contacts deals projects tasks kb meetings journals; d
   mkdir -p "$dest"
 
   # Copy .md files only (skip .gitkeep)
-  found=$(find "$src" -maxdepth 1 -name '*.md' 2>/dev/null | head -1)
+  found=$(find "$src" -maxdepth 1 -name '*.md' -print -quit 2>/dev/null)
   if [ -n "$found" ]; then
     cp "$src"/*.md "$dest/"
     echo "  content/$collection/ ✓"
