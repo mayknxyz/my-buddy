@@ -36,10 +36,8 @@ const SKIP = new Set([
   '.git',
   'cli',
   '.env',
+  'bun.lock',
   'bun.lockb',
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
 ])
 
 export async function scaffold(opts: ScaffoldOptions): Promise<void> {

@@ -73,14 +73,7 @@ async function main() {
           ],
         }),
 
-      packageManager: () =>
-        p.select({
-          message: 'Which package manager?',
-          options: [
-            { value: 'bun', label: 'Bun', hint: 'recommended' },
-            { value: 'yarn', label: 'Yarn' },
-          ],
-        }),
+      packageManager: () => Promise.resolve('bun'),
 
       install: () =>
         p.confirm({
