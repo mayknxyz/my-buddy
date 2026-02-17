@@ -482,14 +482,14 @@ function createSearchOverlay(): HTMLElement {
       return
     }
 
-    if (e.key === 'ArrowDown' || (e.key === 'j' && !input.value)) {
+    if (e.key === 'ArrowDown' || (e.key === 'j' && document.activeElement !== input)) {
       e.preventDefault()
       e.stopPropagation()
       focusSearchResult(searchFocusedIndex + 1)
       return
     }
 
-    if (e.key === 'ArrowUp' || (e.key === 'k' && !input.value)) {
+    if (e.key === 'ArrowUp' || (e.key === 'k' && document.activeElement !== input)) {
       e.preventDefault()
       e.stopPropagation()
       if (searchFocusedIndex <= 0) {
@@ -569,8 +569,7 @@ async function performSearch(query: string): Promise<void> {
   }
 
   try {
-    const search = await pagefindInstance.debouncedSearch(query, {}, 300)
-    if (!search) return // debounced away
+    const search = await pagefindInstance.search(query)
 
     if (search.results.length === 0) {
       renderSearchEmpty('No results found')
