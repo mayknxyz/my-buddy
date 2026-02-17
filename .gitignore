@@ -5,6 +5,10 @@ dist/
 .env.*
 src/data/
 
+# User content and config (personal data, not tracked)
+src/content/**/*.md
+buddy.config.ts
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -18,7 +18,16 @@ No special argument handling.
 
 ## Procedure
 
-### 1. Summarize Session
+### 1. Back Up Data
+
+Read `buddy.config.ts` and check `backup.onEnd`.
+
+- If `true` (default): run `bun data:backup` and include the result in the session summary.
+- If `false`: skip the backup step.
+
+If the backup fails (e.g., data repo not found), note it in the summary but do not block the end-of-session flow.
+
+### 2. Summarize Session
 
 Review the conversation history in this session. List:
 
@@ -26,11 +35,11 @@ Review the conversation history in this session. List:
 - Tasks created, completed, or updated
 - Any other notable actions taken
 
-### 2. Suggest Next Steps
+### 3. Suggest Next Steps
 
 Based on what was done, suggest 1-3 follow-up items for the next session.
 
-### 3. Output
+### 4. Output
 
 ```text
 ---
@@ -56,4 +65,4 @@ Adapt tone to match the configured tone setting.
 
 ## Important
 
-- Do NOT modify any files during end-of-session.
+- Do NOT modify any files during end-of-session (backup script is the only exception).
