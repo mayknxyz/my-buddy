@@ -1,0 +1,29 @@
+---
+import '../../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} | my-buddy</title>
+  </head>
+  <body class="min-h-screen">
+    <slot />
+    <script>
+      import '../../scripts/keyboard';
+      import '../../scripts/filter';
+    </script>
+  </body>
+</html>

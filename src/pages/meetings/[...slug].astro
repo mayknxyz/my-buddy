@@ -1,0 +1,116 @@
+---
+import { getCollection, render } from 'astro:content';
+import Badge from '../../components/atoms/Badge.astro';
+import Backlinks from '../../components/molecules/Backlinks.astro';
+import PageTemplate from '../../components/templates/PageTemplate.astro';
+import { displayName, refName } from '../../utils/display';
+
+export async function getStaticPaths() {
+  const meetings = await getCollection('meetings');
+  return meetings.map(meeting => ({
+    params: { slug: meeting.id },
+    props: { meeting },
+  }));
+}
+
+const { meeting } = Astro.props;
+const { Content } = await render(meeting);
+const accounts = await getCollection('accounts');
+const accountNames: Record<string, string> = Object.fromEntries(
+  accounts.map(a => [a.id, a.data.title || a.id.replace(/-/g, ' ')])
+);
+const allProjects = await getCollection('projects');
+const accountEntry = meeting.data.account ? accounts.find(a => a.id === meeting.data.account!.id) : undefined;
+const projectEntry = meeting.data.project ? allProjects.find(p => p.id === meeting.data.project!.id) : undefined;
+
+const typeVariants: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  discovery: 'info',
+  standup: 'neutral',
+  review: 'warning',
+  planning: 'success',
+  retrospective: 'danger',
+  other: 'neutral',
+};
+
+const title = meeting.id.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/-/g, ' ');
+
+const breadcrumbs = [
+  ...(accountEntry ? [
+    { label: 'Accounts', href: '/accounts/' },
+    { label: displayName(accountEntry), href: `/accounts/${accountEntry.id}/` },
+  ] : []),
+  ...(projectEntry ? [
+    { label: 'Projects', href: '/projects/' },
+    { label: displayName(projectEntry), href: `/projects/${projectEntry.id}/` },
+  ] : []),
+  { label: 'Meetings', href: '/meetings/' },
+  { label: title, href: `/meetings/${meeting.id}/` },
+];
+---
+
+<PageTemplate
+  title={title}
+  breadcrumbs={breadcrumbs}
+>
+  <meta data-pagefind-filter="collection[content]" content="meetings" />
+  <span data-pagefind-meta="title" style="display:none;">{meeting.id.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/-/g, ' ')}</span>
+  <div class="max-w-4xl space-y-6">
+    <div class="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text)]">
+      <Badge variant={typeVariants[meeting.data.type]}>{meeting.data.type}</Badge>
+      <span>
+        {new Date(meeting.data.date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}
+      </span>
+    </div>
+
+    <div class="border-t border-[var(--color-border)] pt-4">
+      <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Attendees</h3>
+      <ul class="flex flex-wrap gap-2">
+        {meeting.data.attendees.map((attendee: string) => (
+          <li class="px-2 py-1 bg-[var(--color-surface)] rounded text-sm text-[var(--color-text)]">{attendee}</li>
+        ))}
+      </ul>
+    </div>
+
+    {meeting.data.account && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Account</h3>
+        <a href={`/accounts/${meeting.data.account.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+          {refName(meeting.data.account.id, accountNames)}
+        </a>
+      </div>
+    )}
+
+    {meeting.data.project && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Project</h3>
+        <a href={`/projects/${meeting.data.project.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+          {displayName(projectEntry!)}
+        </a>
+      </div>
+    )}
+
+    {meeting.data.action_items && meeting.data.action_items.length > 0 && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Action Items</h3>
+        <ul class="list-disc list-inside space-y-1">
+          {meeting.data.action_items.map((item: string) => (
+            <li class="text-[var(--color-text)]">{item}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    <div class="border-t border-[var(--color-border)] pt-6 prose prose-invert max-w-none">
+      <Content />
+    </div>
+
+    <Backlinks slug={meeting.id} />
+  </div>
+</PageTemplate>

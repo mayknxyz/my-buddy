@@ -1,0 +1,34 @@
+---
+/**
+ * KeyToast - Visual indicator for pending keyboard sequences
+ *
+ * This component is created dynamically by the keyboard.ts script.
+ * This Astro file serves as documentation for the component structure.
+ *
+ * Usage: Automatically appears when user presses 'g' key and shows
+ * pending sequence like "g..." until second key is pressed or timeout.
+ *
+ * Positioning: Fixed bottom-right corner of viewport
+ * Behavior: Fades in/out with opacity transitions
+ */
+---
+
+<!-- KeyToast is dynamically created by src/scripts/keyboard.ts -->
+<!-- This file documents the expected structure for reference -->
+
+<div
+  id="key-toast"
+  aria-live="polite"
+  aria-atomic="true"
+  class="fixed bottom-4 right-4 px-4 py-2 bg-slate-800/95 text-slate-200 rounded-md font-mono text-sm z-[9999] opacity-0 transition-opacity duration-150 pointer-events-none"
+>
+  g...
+</div>
+
+<style>
+  /* KeyToast styles - these are also defined inline in keyboard.ts */
+  #key-toast {
+    /* Ensure toast appears above other content */
+    z-index: 9999;
+  }
+</style>

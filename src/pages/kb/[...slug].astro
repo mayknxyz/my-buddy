@@ -1,0 +1,50 @@
+---
+import { getCollection, render } from 'astro:content';
+import Badge from '../../components/atoms/Badge.astro';
+import Backlinks from '../../components/molecules/Backlinks.astro';
+import PageTemplate from '../../components/templates/PageTemplate.astro';
+
+export async function getStaticPaths() {
+  const articles = await getCollection('kb');
+  return articles.map(article => ({
+    params: { slug: article.id },
+    props: { article },
+  }));
+}
+
+const { article } = Astro.props;
+const { Content } = await render(article);
+
+const title = article.id.replace(/-/g, ' ');
+---
+
+<PageTemplate
+  title={title}
+  breadcrumbs={[
+    { label: 'KB', href: '/kb/' },
+    { label: title, href: `/kb/${article.id}/` },
+  ]}
+>
+  <meta data-pagefind-filter="collection[content]" content="kb" />
+  <span data-pagefind-meta="title" style="display:none;">{article.id.replace(/-/g, ' ')}</span>
+  <div class="max-w-4xl space-y-6">
+    <div class="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text)]">
+      {article.data.tags && article.data.tags.length > 0 && (
+        <div class="flex flex-wrap gap-1">
+          {article.data.tags.map((tag: string) => (
+            <Badge variant="info">{tag}</Badge>
+          ))}
+        </div>
+      )}
+      {article.data.updated && (
+        <span>Updated: {article.data.updated.toISOString().split('T')[0]}</span>
+      )}
+    </div>
+
+    <div class="border-t border-[var(--color-border)] pt-6 prose prose-invert max-w-none">
+      <Content />
+    </div>
+
+    <Backlinks slug={article.id} />
+  </div>
+</PageTemplate>

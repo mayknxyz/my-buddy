@@ -1,0 +1,43 @@
+name: Publish CLI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.release.tag_name, 'cli-v')
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install CLI dependencies
+        working-directory: cli
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI
+        working-directory: cli
+        run: bun run build
+
+      - name: Copy template files
+        run: |
+          mkdir -p cli/template
+          rsync -a --exclude='node_modules' --exclude='dist' --exclude='.astro' --exclude='.git' --exclude='cli' --exclude='.env' --exclude='bun.lockb' ./ cli/template/
+
+      - name: Publish to npm
+        working-directory: cli
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

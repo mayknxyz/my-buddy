@@ -1,0 +1,144 @@
+---
+import { getCollection, render } from 'astro:content';
+import Badge from '../../components/atoms/Badge.astro';
+import Backlinks from '../../components/molecules/Backlinks.astro';
+import RelatedContent from '../../components/molecules/RelatedContent.astro';
+import PageTemplate from '../../components/templates/PageTemplate.astro';
+import { refName } from '../../utils/display';
+
+export async function getStaticPaths() {
+  const contacts = await getCollection('contacts');
+  return contacts.map(contact => ({
+    params: { slug: contact.id },
+    props: { contact },
+  }));
+}
+
+const { contact } = Astro.props;
+const { Content } = await render(contact);
+
+const title = `${contact.data.first_name} ${contact.data.last_name}`;
+
+// Get related entities
+const allDeals = await getCollection('deals');
+const deals = allDeals.filter(d => d.data.contact?.id === contact.id);
+const accounts = await getCollection('accounts');
+const accountNames: Record<string, string> = Object.fromEntries(
+  accounts.map(a => [a.id, a.data.title || a.id.replace(/-/g, ' ')])
+);
+
+const accountEntry = accounts.find(a => a.id === contact.data.account.id);
+const breadcrumbs = [
+  ...(accountEntry ? [
+    { label: 'Accounts', href: '/accounts/' },
+    { label: accountEntry.data.title || accountEntry.id.replace(/-/g, ' '), href: `/accounts/${accountEntry.id}/` },
+  ] : []),
+  { label: 'Contacts', href: '/contacts/' },
+  { label: title, href: `/contacts/${contact.id}/` },
+];
+
+const stageVariants: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  discovery: 'info',
+  proposal: 'warning',
+  negotiation: 'warning',
+  'closed-won': 'success',
+  'closed-lost': 'danger',
+};
+
+// Related meetings — filter by attendee name
+const allMeetings = await getCollection('meetings');
+const contactFullName = `${contact.data.first_name} ${contact.data.last_name}`;
+const contactMeetings = allMeetings
+  .filter(m => m.data.attendees?.some((a: string) => a === contactFullName))
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const relatedMeetings = contactMeetings.map(m => ({
+  label: m.id.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/-/g, ' '),
+  href: `/meetings/${m.id}/`,
+  meta: m.data.date.toISOString().split('T')[0],
+}));
+
+let globalIndex = 0;
+---
+
+<PageTemplate
+  title={title}
+  breadcrumbs={breadcrumbs}
+>
+  <meta data-pagefind-filter="collection[content]" content="contacts" />
+  <span data-pagefind-meta="title" style="display:none;">{`${contact.data.first_name} ${contact.data.last_name}`}</span>
+  <div class="max-w-4xl space-y-6">
+    <div class="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text)]">
+      {contact.data.is_primary && <Badge variant="success">primary</Badge>}
+      {contact.data.role && <span class="text-[var(--color-text-muted)]">{contact.data.role}</span>}
+    </div>
+
+    <div class="border-t border-[var(--color-border)] pt-4">
+      <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Account</h3>
+      <a href={`/accounts/${contact.data.account.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+        {refName(contact.data.account.id, accountNames)}
+      </a>
+    </div>
+
+    {(contact.data.email || contact.data.phone) && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Contact Info</h3>
+        <div class="space-y-1 text-sm text-[var(--color-text)]">
+          {contact.data.email && <p>Email: <a href={`mailto:${contact.data.email}`} class="text-[var(--color-primary)] hover:underline">{contact.data.email}</a></p>}
+          {contact.data.phone && <p>Phone: {contact.data.phone}</p>}
+        </div>
+      </div>
+    )}
+
+    {deals.length > 0 && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Deals</h3>
+        <div class="rounded-lg border border-[var(--color-border)] overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-[var(--color-surface)] text-left text-[var(--color-text-muted)]">
+                <th class="py-2 px-4 font-medium">Deal</th>
+                <th class="py-2 px-4 font-medium">Stage</th>
+                <th class="py-2 px-4 font-medium">Value</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--color-border)]">
+              {deals.map((deal) => {
+                const idx = globalIndex++;
+                return (
+                  <tr class="hover:bg-[var(--color-surface-hover)] transition-colors">
+                    <td class="py-2 px-4">
+                      <a
+                        href={`/deals/${deal.id}/`}
+                        class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
+                        data-focusable
+                        data-index={idx}
+                        tabindex="0"
+                      >
+                        {deal.id.replace(/-/g, ' ')}
+                      </a>
+                    </td>
+                    <td class="py-2 px-4">
+                      <Badge variant={stageVariants[deal.data.stage]}>{deal.data.stage}</Badge>
+                    </td>
+                    <td class="py-2 px-4 text-[var(--color-text)]">
+                      {deal.data.value ? `$${deal.data.value.toLocaleString()}` : '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    <div class="border-t border-[var(--color-border)] pt-6 prose prose-invert max-w-none">
+      <Content />
+    </div>
+
+    <RelatedContent title="Meetings" items={relatedMeetings} />
+
+    <Backlinks slug={contact.id} />
+  </div>
+</PageTemplate>

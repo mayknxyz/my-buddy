@@ -1,0 +1,80 @@
+---
+import { getCollection } from 'astro:content';
+import Badge from '../../components/atoms/Badge.astro';
+import FilterSelect from '../../components/atoms/FilterSelect.astro';
+import FilterBar from '../../components/molecules/FilterBar.astro';
+import PageTemplate from '../../components/templates/PageTemplate.astro';
+import { displayName } from '../../utils/display';
+
+const accounts = await getCollection('accounts');
+
+const statusVariants: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  active: 'success',
+  inactive: 'neutral',
+  potential: 'info',
+};
+
+const typeVariants: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  lead: 'warning',
+  client: 'success',
+};
+---
+
+<PageTemplate title="Accounts" description="All accounts"><div data-pagefind-ignore="all">
+  <FilterBar searchPlaceholder="Search accounts...">
+    <FilterSelect name="type" label="Type" options={[
+      { value: 'lead', label: 'Lead' },
+      { value: 'client', label: 'Client' },
+    ]} />
+    <FilterSelect name="status" label="Status" options={[
+      { value: 'active', label: 'Active' },
+      { value: 'inactive', label: 'Inactive' },
+      { value: 'potential', label: 'Potential' },
+    ]} />
+  </FilterBar>
+
+  {accounts.length > 0 ? (
+    <div class="rounded-lg border border-[var(--color-border)] overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-[var(--color-surface)] text-left text-[var(--color-text-muted)]">
+            <th class="py-3 px-4 font-medium">ID</th>
+            <th class="py-3 px-4 font-medium">Name</th>
+            <th class="py-3 px-4 font-medium">Type</th>
+            <th class="py-3 px-4 font-medium">Status</th>
+            <th class="py-3 px-4 font-medium">Contact</th>
+            <th class="py-3 px-4 font-medium">Since</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[var(--color-border)]">
+          {accounts.map((account, index) => (
+            <tr class="hover:bg-[var(--color-surface-hover)] transition-colors" data-filter-type={account.data.type} data-filter-status={account.data.status}>
+              <td class="py-3 px-4 text-[var(--color-text-muted)]">{account.data.uid}</td>
+              <td class="py-3 px-4">
+                <a
+                  href={`/accounts/${account.id}/`}
+                  class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
+                  data-focusable
+                  data-index={index}
+                  tabindex="0"
+                >
+                  {displayName(account)}
+                </a>
+              </td>
+              <td class="py-3 px-4">
+                <Badge variant={typeVariants[account.data.type]}>{account.data.type}</Badge>
+              </td>
+              <td class="py-3 px-4">
+                <Badge variant={statusVariants[account.data.status]}>{account.data.status}</Badge>
+              </td>
+              <td class="py-3 px-4 text-[var(--color-text)]">{account.data.contact}</td>
+              <td class="py-3 px-4 text-[var(--color-text)]">{account.data.since.toISOString().split('T')[0]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <p class="text-[var(--color-text-muted)] text-center py-8">No accounts found.</p>
+  )}
+</div></PageTemplate>

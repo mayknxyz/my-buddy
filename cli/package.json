@@ -1,0 +1,33 @@
+{
+  "name": "create-my-buddy",
+  "version": "0.1.0",
+  "description": "Scaffold a new my-buddy personal assistant dashboard",
+  "type": "module",
+  "bin": {
+    "create-my-buddy": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm",
+    "dev": "bun run src/index.ts"
+  },
+  "files": [
+    "dist",
+    "template"
+  ],
+  "keywords": [
+    "cli",
+    "scaffold",
+    "personal-assistant",
+    "dashboard",
+    "astro",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}

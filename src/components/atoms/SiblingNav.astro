@@ -1,0 +1,42 @@
+---
+interface SiblingLink {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  prev?: SiblingLink;
+  next?: SiblingLink;
+}
+
+const { prev, next } = Astro.props;
+---
+
+{(prev || next) && (
+  <div class="flex items-center justify-between gap-4 mb-4 text-sm">
+    <div>
+      {prev && (
+        <a
+          href={prev.href}
+          class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
+          data-focusable
+          tabindex="0"
+        >
+          ← {prev.label}
+        </a>
+      )}
+    </div>
+    <div>
+      {next && (
+        <a
+          href={next.href}
+          class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
+          data-focusable
+          tabindex="0"
+        >
+          {next.label} →
+        </a>
+      )}
+    </div>
+  </div>
+)}

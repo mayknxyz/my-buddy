@@ -1,0 +1,22 @@
+---
+interface Props {
+  name: string;
+  label: string;
+  options: Array<{ value: string; label: string }>;
+}
+
+const { name, label, options } = Astro.props;
+---
+
+<select
+  data-filter-select
+  data-filter-name={name}
+  class="px-3 py-1.5 text-sm rounded-md bg-[var(--color-surface)] text-[var(--color-text)]
+         border border-[var(--color-border)]
+         focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
+>
+  <option value="">All {label}</option>
+  {options.map((opt) => (
+    <option value={opt.value}>{opt.label}</option>
+  ))}
+</select>

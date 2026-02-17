@@ -1,0 +1,102 @@
+---
+import { getCollection } from 'astro:content';
+import Badge from '../../components/atoms/Badge.astro';
+import FilterSelect from '../../components/atoms/FilterSelect.astro';
+import FilterBar from '../../components/molecules/FilterBar.astro';
+import PageTemplate from '../../components/templates/PageTemplate.astro';
+import { displayName, refName } from '../../utils/display';
+
+const deals = await getCollection('deals');
+const accounts = await getCollection('accounts');
+const accountNames: Record<string, string> = Object.fromEntries(
+  accounts.map(a => [a.id, a.data.title || a.id.replace(/-/g, ' ')])
+);
+const contacts = await getCollection('contacts');
+const contactNames: Record<string, string> = Object.fromEntries(
+  contacts.map(c => [c.id, `${c.data.first_name} ${c.data.last_name}`])
+);
+
+const stageVariants: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  discovery: 'info',
+  proposal: 'warning',
+  negotiation: 'warning',
+  'closed-won': 'success',
+  'closed-lost': 'danger',
+};
+---
+
+<PageTemplate title="Deals" description="Deal pipeline"><div data-pagefind-ignore="all">
+  <FilterBar searchPlaceholder="Search deals...">
+    <FilterSelect name="stage" label="Stage" options={[
+      { value: 'discovery', label: 'Discovery' },
+      { value: 'proposal', label: 'Proposal' },
+      { value: 'negotiation', label: 'Negotiation' },
+      { value: 'closed-won', label: 'Closed Won' },
+      { value: 'closed-lost', label: 'Closed Lost' },
+    ]} />
+    <FilterSelect name="account" label="Account" options={
+      accounts.map(a => ({ value: a.id, label: displayName(a) }))
+    } />
+  </FilterBar>
+
+  {deals.length > 0 ? (
+    <div class="rounded-lg border border-[var(--color-border)] overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-[var(--color-surface)] text-left text-[var(--color-text-muted)]">
+            <th class="py-3 px-4 font-medium">ID</th>
+            <th class="py-3 px-4 font-medium">Deal</th>
+            <th class="py-3 px-4 font-medium">Account</th>
+            <th class="py-3 px-4 font-medium">Contact</th>
+            <th class="py-3 px-4 font-medium">Stage</th>
+            <th class="py-3 px-4 font-medium">Value</th>
+            <th class="py-3 px-4 font-medium">Expected Close</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[var(--color-border)]">
+          {deals.map((deal, index) => (
+            <tr class="hover:bg-[var(--color-surface-hover)] transition-colors" data-filter-stage={deal.data.stage} data-filter-account={deal.data.account.id}>
+              <td class="py-3 px-4 text-[var(--color-text-muted)]">{deal.data.uid}</td>
+              <td class="py-3 px-4">
+                <a
+                  href={`/deals/${deal.id}/`}
+                  class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
+                  data-focusable
+                  data-index={index}
+                  tabindex="0"
+                >
+                  {deal.id.replace(/-/g, ' ')}
+                </a>
+              </td>
+              <td class="py-3 px-4">
+                <a href={`/accounts/${deal.data.account.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+                  {refName(deal.data.account.id, accountNames)}
+                </a>
+              </td>
+              <td class="py-3 px-4">
+                {deal.data.contact ? (
+                  <a href={`/contacts/${deal.data.contact.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+                    {contactNames[deal.data.contact.id] || deal.data.contact.id.replace(/-/g, ' ')}
+                  </a>
+                ) : (
+                  <span class="text-[var(--color-text)]">-</span>
+                )}
+              </td>
+              <td class="py-3 px-4">
+                <Badge variant={stageVariants[deal.data.stage]}>{deal.data.stage}</Badge>
+              </td>
+              <td class="py-3 px-4 text-[var(--color-text)]">
+                {deal.data.value ? `$${deal.data.value.toLocaleString()}` : '-'}
+              </td>
+              <td class="py-3 px-4 text-[var(--color-text)]">
+                {deal.data.expected_close ? deal.data.expected_close.toISOString().split('T')[0] : '-'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <p class="text-[var(--color-text-muted)] text-center py-8">No deals found.</p>
+  )}
+</div></PageTemplate>

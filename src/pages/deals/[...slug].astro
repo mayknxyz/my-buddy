@@ -1,0 +1,97 @@
+---
+import { getCollection, render } from 'astro:content';
+import Badge from '../../components/atoms/Badge.astro';
+import Backlinks from '../../components/molecules/Backlinks.astro';
+import PageTemplate from '../../components/templates/PageTemplate.astro';
+import { refName } from '../../utils/display';
+
+export async function getStaticPaths() {
+  const deals = await getCollection('deals');
+  return deals.map(deal => ({
+    params: { slug: deal.id },
+    props: { deal },
+  }));
+}
+
+const { deal } = Astro.props;
+const { Content } = await render(deal);
+const accounts = await getCollection('accounts');
+const accountNames: Record<string, string> = Object.fromEntries(
+  accounts.map(a => [a.id, a.data.title || a.id.replace(/-/g, ' ')])
+);
+const contacts = await getCollection('contacts');
+const contactNames: Record<string, string> = Object.fromEntries(
+  contacts.map(c => [c.id, `${c.data.first_name} ${c.data.last_name}`])
+);
+
+const stageVariants: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  discovery: 'info',
+  proposal: 'warning',
+  negotiation: 'warning',
+  'closed-won': 'success',
+  'closed-lost': 'danger',
+};
+
+const title = deal.id.replace(/-/g, ' ');
+
+const accountEntry = accounts.find(a => a.id === deal.data.account.id);
+const breadcrumbs = [
+  ...(accountEntry ? [
+    { label: 'Accounts', href: '/accounts/' },
+    { label: accountEntry.data.title || accountEntry.id.replace(/-/g, ' '), href: `/accounts/${accountEntry.id}/` },
+  ] : []),
+  { label: 'Deals', href: '/deals/' },
+  { label: title, href: `/deals/${deal.id}/` },
+];
+---
+
+<PageTemplate
+  title={title}
+  breadcrumbs={breadcrumbs}
+>
+  <meta data-pagefind-filter="collection[content]" content="deals" />
+  <span data-pagefind-meta="title" style="display:none;">{deal.id.replace(/-/g, ' ')}</span>
+  <div class="max-w-4xl space-y-6">
+    <div class="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text)]">
+      <Badge variant={stageVariants[deal.data.stage]}>{deal.data.stage}</Badge>
+      {deal.data.value && <span>Value: ${deal.data.value.toLocaleString()}</span>}
+    </div>
+
+    <div class="border-t border-[var(--color-border)] pt-4">
+      <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Account</h3>
+      <a href={`/accounts/${deal.data.account.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+        {refName(deal.data.account.id, accountNames)}
+      </a>
+    </div>
+
+    {deal.data.contact && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Contact</h3>
+        <a href={`/contacts/${deal.data.contact.id}/`} class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+          {contactNames[deal.data.contact.id] || deal.data.contact.id.replace(/-/g, ' ')}
+        </a>
+      </div>
+    )}
+
+    <div class="border-t border-[var(--color-border)] pt-4">
+      <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Dates</h3>
+      <div class="space-y-1 text-sm text-[var(--color-text)]">
+        {deal.data.expected_close && <p>Expected Close: {deal.data.expected_close.toISOString().split('T')[0]}</p>}
+        {deal.data.actual_close && <p>Actual Close: {deal.data.actual_close.toISOString().split('T')[0]}</p>}
+      </div>
+    </div>
+
+    {deal.data.lost_reason && (
+      <div class="border-t border-[var(--color-border)] pt-4">
+        <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Lost Reason</h3>
+        <p class="text-[var(--color-text)]">{deal.data.lost_reason}</p>
+      </div>
+    )}
+
+    <div class="border-t border-[var(--color-border)] pt-6 prose prose-invert max-w-none">
+      <Content />
+    </div>
+
+    <Backlinks slug={deal.id} />
+  </div>
+</PageTemplate>
