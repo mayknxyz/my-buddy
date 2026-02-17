@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-17
+
+### Added
+
+- Data backup/restore scripts (`scripts/data-backup.sh`,
+  `scripts/data-restore.sh`) for syncing content to a private data repo
+- `/mybuddy.backup` Claude Code command for manual backup
+- `backup.onEnd` config option to control auto-backup on session end
+  (default: `true`)
+- `buddy.config.example.ts` as tracked reference config for new users
+- `bun data:backup` and `bun data:restore` package scripts
+- README sections: Setup, Staying Updated (fork workflow),
+  and Backing Up Your Content
+
+### Changed
+
+- `/mybuddy.end` now auto-runs backup before session summary
+  (respects `backup.onEnd` config)
+- `.gitignore` excludes `src/content/**/*.md` and `buddy.config.ts`
+  to keep personal data out of the public repo
+
 ## [0.1.1] - 2026-02-17
 
 ### Fixed
@@ -61,5 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI scaffolding tool via `bun create my-buddy`
 - MIT license
 
+[0.2.0]: https://github.com/mayknxyz/my-buddy/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mayknxyz/my-buddy/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mayknxyz/my-buddy/releases/tag/v0.1.0

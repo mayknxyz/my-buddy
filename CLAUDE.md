@@ -49,6 +49,8 @@ bun preview      # Preview production build
 bun lint         # Lint with Biome
 bun format       # Format with Biome (auto-fix)
 bun check        # Lint + format combined (auto-fix)
+bun data:backup  # Back up content to data repo
+bun data:restore # Restore content from data repo
 ```
 
 ## Architecture
@@ -179,7 +181,7 @@ Each collection has `.create`, `.view`, `.edit`, `.list`, `.delete`:
 
 ### Persona Operational Commands
 
-**Session:** `mybuddy.start`, `mybuddy.end`
+**Session:** `mybuddy.start`, `mybuddy.end`, `mybuddy.backup`
 **Daily Ops:** `mybuddy.standup`, `mybuddy.eod`
 **Reporting:** `mybuddy.weekly`, `mybuddy.monthly`
 **Data Hygiene:** `mybuddy.orphans`, `mybuddy.stale`, `mybuddy.audit`
@@ -201,9 +203,20 @@ Copy these files to quickly create new content:
 {
   persona: { name, tone, customPrompt, boundaries },
   collections: { accounts, contacts, deals, projects, tasks, kb, meetings, journals },
+  backup: { onEnd },
   theme: { accentColor }
 }
 ```
+
+### Data Backup
+
+Content files (`src/content/**/*.md`) and `buddy.config.ts` are gitignored to keep
+personal data out of the public repo. Built-in backup scripts sync content to a
+separate private data repo (default: `../my-buddy-data`).
+
+- `/mybuddy.backup` — manually trigger a backup
+- `/mybuddy.end` — auto-runs backup unless `backup.onEnd` is `false` in config
+- `bun data:backup` / `bun data:restore` — shell scripts for backup and restore
 
 ## Technologies
 

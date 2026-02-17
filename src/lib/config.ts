@@ -21,6 +21,11 @@ const buddyConfigSchema = z.object({
       journals: z.boolean().default(true),
     })
     .default({}),
+  backup: z
+    .object({
+      onEnd: z.boolean().default(true),
+    })
+    .default({}),
   theme: z
     .object({
       accentColor: z.string().default('indigo'),

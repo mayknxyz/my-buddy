@@ -24,6 +24,74 @@ bun create my-buddy
 
 The CLI asks for your persona name, tone, which collections to enable, accent color, and sets everything up.
 
+### Setup
+
+Copy the example config and customize it:
+
+```bash
+cp buddy.config.example.ts buddy.config.ts
+```
+
+Your content files (`src/content/**/*.md`) and `buddy.config.ts` are gitignored
+so personal data is never pushed to the public repo.
+
+## Staying Updated
+
+my-buddy separates **code** (tracked) from **content** (local-only). Your markdown
+files and persona config stay on your machine while you pull code updates cleanly.
+
+### Fork workflow (recommended)
+
+```bash
+# 1. Fork the repo on GitHub, then clone your fork
+git clone https://github.com/YOUR_USERNAME/my-buddy.git
+cd my-buddy
+bun install
+
+# 2. Add the upstream remote
+git remote add upstream https://github.com/mayknxyz/my-buddy.git
+
+# 3. Pull code updates anytime
+git fetch upstream
+git merge upstream/main
+```
+
+Your content files won't conflict because upstream has none — only `.gitkeep`
+stubs in `src/content/`. If `buddy.config.example.ts` or `src/content.config.ts`
+change upstream, you may need to resolve minor conflicts.
+
+### Backing up your content (recommended)
+
+Your content is gitignored, which means it only exists on your machine. Set up a
+private data repo so you don't lose your work:
+
+```bash
+# 1. Create a private repo on GitHub (e.g., my-buddy-data), then:
+git init ../my-buddy-data
+cd ../my-buddy-data
+git remote add origin git@github.com:YOUR_USERNAME/my-buddy-data.git
+
+# 2. Back up your content anytime
+bun data:backup
+
+# 3. Push to your private repo
+cd ../my-buddy-data && git add -A && git commit -m "backup" && git push
+```
+
+To restore on a new machine after cloning both repos:
+
+```bash
+bun data:restore
+```
+
+The scripts look for `../my-buddy-data` by default. Override with a custom path:
+
+```bash
+bun data:backup /path/to/your/data-repo
+bun data:restore /path/to/your/data-repo
+# or set BUDDY_DATA_REPO=/path/to/repo
+```
+
 ## Features
 
 - **8 content collections** — accounts, contacts, deals, projects, tasks, kb, meetings, journals
@@ -33,6 +101,7 @@ The CLI asks for your persona name, tone, which collections to enable, accent co
 - **Configurable AI persona** — name, tone (blunt/friendly/professional), boundaries
 - **53 Claude Code commands** — CRUD operations + daily ops, reporting, pipeline analysis
 - **Dark theme** — CSS custom properties with WCAG AA focus indicators
+- **Data backup** — built-in scripts to back up content to a private repo, auto-runs on `/mybuddy.end`
 - **Zero external services** — everything runs locally from markdown files
 
 ## Configuration
@@ -58,6 +127,9 @@ export default defineConfig({
     kb: true,
     meetings: true,
     journals: true,
+  },
+  backup: {
+    onEnd: true,              // Auto-backup when ending a session (default: true)
   },
   theme: {
     accentColor: 'indigo',
@@ -112,7 +184,8 @@ See [[meeting-best-practices]] for prep notes.
 | Command | Description |
 | ------- | ----------- |
 | `/mybuddy.start` | Start persona session |
-| `/mybuddy.end` | End session with summary |
+| `/mybuddy.end` | End session with summary + auto-backup |
+| `/mybuddy.backup` | Back up content to data repo |
 
 ### CRUD (per collection)
 
@@ -151,6 +224,8 @@ bun preview      # Preview production build
 bun lint         # Lint with Biome
 bun format       # Format with Biome
 bun check        # Lint + format
+bun data:backup  # Back up content to data repo
+bun data:restore # Restore content from data repo
 ```
 
 ### Architecture

@@ -24,7 +24,9 @@
     "astro": "astro",
     "lint": "biome lint",
     "format": "biome format --write",
-    "check": "biome check --write"
+    "check": "biome check --write",
+    "data:backup": "scripts/data-backup.sh",
+    "data:restore": "scripts/data-restore.sh"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
