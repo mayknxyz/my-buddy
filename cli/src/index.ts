@@ -78,8 +78,6 @@ async function main() {
           message: 'Which package manager?',
           options: [
             { value: 'bun', label: 'Bun', hint: 'recommended' },
-            { value: 'npm', label: 'npm' },
-            { value: 'pnpm', label: 'pnpm' },
             { value: 'yarn', label: 'Yarn' },
           ],
         }),

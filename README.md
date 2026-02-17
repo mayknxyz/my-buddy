@@ -18,9 +18,7 @@ bun dev
 ### CLI (scaffold a new project)
 
 ```bash
-npm create my-buddy
-# or
-bunx create-my-buddy
+bun create my-buddy
 ```
 
 The CLI asks for your persona name, tone, which collections to enable, accent color, and sets everything up.
