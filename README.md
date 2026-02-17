@@ -2,14 +2,15 @@
 
 Open-source personal assistant dashboard. Markdown-first, keyboard-first, built with Astro 5 + Bun + Tailwind v4.
 
-Manage accounts, contacts, deals, projects, tasks, knowledge base, meetings, and journals — all from markdown files with a configurable AI assistant powered by Claude Code.
+Manage accounts, contacts, deals, projects, tasks, knowledge base, meetings, and journals —
+all from markdown files with a configurable AI assistant powered by Claude Code.
 
 ## Quick Start
 
 ### Template (clone and own)
 
 ```bash
-git clone https://github.com/your-username/my-buddy.git
+git clone https://github.com/mayknxyz/my-buddy.git
 cd my-buddy
 bun install
 bun dev
@@ -69,7 +70,7 @@ export default defineConfig({
 All data lives in `src/content/` as markdown files with YAML frontmatter.
 
 | Collection | Slug format | Key fields |
-|-----------|-------------|------------|
+| ---------- | --------------- | ------------------------------------------------ |
 | Accounts | `kebab-case` | type, status, contact, since |
 | Contacts | `kebab-case` | first_name, last_name, account, is_primary |
 | Deals | `kebab-case` | account, stage, value, expected_close |
@@ -95,7 +96,7 @@ See [[meeting-best-practices]] for prep notes.
 ## Keyboard Shortcuts
 
 | Key | Action |
-|-----|--------|
+| --- | ------ |
 | `g z` | Go to dashboard |
 | `g a/c/d/p/t/k/m/j` | Go to collection |
 | `j` / `k` | Next / previous item |
@@ -109,14 +110,14 @@ See [[meeting-best-practices]] for prep notes.
 ### Session
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `/mybuddy.start` | Start persona session |
 | `/mybuddy.end` | End session with summary |
 
 ### CRUD (per collection)
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `/mybuddy.{collection}.create` | Create new entry |
 | `/mybuddy.{collection}.view [slug]` | View entry detail |
 | `/mybuddy.{collection}.edit [slug]` | Edit entry fields |
@@ -128,7 +129,7 @@ Collections: `account`, `contact`, `deal`, `project`, `task`, `kb`, `meeting`, `
 ### Operations
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `/mybuddy.standup` | Morning review |
 | `/mybuddy.eod` | End of day summary |
 | `/mybuddy.weekly` | Weekly review |
@@ -154,7 +155,7 @@ bun check        # Lint + format
 
 ### Architecture
 
-```
+```text
 src/
 ├── content/              # 8 markdown collections
 ├── content.config.ts     # Zod schemas

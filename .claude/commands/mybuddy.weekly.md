@@ -4,9 +4,11 @@ description: Weekly review — task velocity, deal progress, project status, jou
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -22,7 +24,9 @@ Parse the target week from `$ARGUMENTS` or default to the current calendar week.
 
 ### 2. Gather Data
 
-- **Tasks:** Read all in `src/content/tasks/`. Count completed (status: done with filename date in target week), created (filename date in target week), and still open.
+- **Tasks:** Read all in `src/content/tasks/`.
+  Count completed (status: done with filename date in target week),
+  created (filename date in target week), and still open.
 - **Deals:** Read all in `src/content/deals/`. Note any stage changes this week (check if deals were modified).
 - **Projects:** Read all in `src/content/projects/`. Note status of each active project.
 - **Meetings:** Read all in `src/content/meetings/`. Count meetings in the target week by type.
@@ -30,7 +34,7 @@ Parse the target week from `$ARGUMENTS` or default to the current calendar week.
 
 ### 3. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Weekly Review | Week of {start date}
 ---

@@ -644,7 +644,10 @@ function renderSearchResults(results: unknown[]): void {
     if (result.excerpt) {
       const excerpt = document.createElement('div')
       excerpt.style.cssText = 'color: #94a3b8; font-size: 0.75rem; line-height: 1.4;'
-      excerpt.innerHTML = result.excerpt
+      excerpt.textContent = ''
+      const template = document.createElement('template')
+      template.innerHTML = result.excerpt
+      excerpt.appendChild(template.content)
       // Style the <mark> tags from Pagefind
       for (const mark of excerpt.querySelectorAll('mark')) {
         ;(mark as HTMLElement).style.cssText =

@@ -4,9 +4,11 @@ description: Delete a project entry.
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -32,7 +34,7 @@ If confirmed, delete the file at `src/content/projects/{slug}.md`.
 
 ### 4. Output
 
-```
+```text
 {PERSONA NAME} | Deleted project: src/content/projects/{slug}.md
 ```
 

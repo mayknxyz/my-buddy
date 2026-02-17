@@ -4,9 +4,11 @@ description: Find broken references, unlinked items, and projects with no tasks.
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -18,7 +20,9 @@ No special argument handling.
 
 ### 1. Check Frontmatter References
 
-Read all files in every collection under `src/content/`. For each reference field (`account`, `contact`, `project`), verify the referenced slug exists as a file in the target collection.
+Read all files in every collection under `src/content/`.
+For each reference field (`account`, `contact`, `project`),
+verify the referenced slug exists as a file in the target collection.
 
 ### 2. Find Unlinked Items
 
@@ -32,7 +36,7 @@ Scan markdown body content for `[[slug]]` patterns. Verify each slug exists as a
 
 ### 4. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Orphan Check | {today's date}
 ---

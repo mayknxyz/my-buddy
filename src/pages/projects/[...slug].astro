@@ -119,8 +119,8 @@ const breadcrumbs = [
     {project.data.repo && (
       <div class="border-t border-[var(--color-border)] pt-4">
         <h3 class="text-sm font-medium text-[var(--color-text-muted)] mb-2">Repository</h3>
-        <a href={`https://github.com/mayknxyz/${project.data.repo}`} target="_blank" rel="noopener noreferrer" class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
-          mayknxyz/{project.data.repo}
+        <a href={`https://${project.data.repo}`} target="_blank" rel="noopener noreferrer" class="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline">
+          {project.data.repo}
         </a>
       </div>
     )}

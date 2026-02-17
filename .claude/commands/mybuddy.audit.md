@@ -4,9 +4,11 @@ description: Full data health check — missing fields, duplicate uids, status i
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -19,6 +21,7 @@ No special argument handling.
 ### 1. UID Checks
 
 For each collection in `src/content/`, read all files and extract uids. Check for:
+
 - **Duplicate uids:** Same uid value in multiple files within the same collection.
 - **Unassigned uids:** uid value of 0 (template leftover).
 
@@ -27,6 +30,7 @@ Note: uid gaps are expected (from archiving) and must NOT be flagged.
 ### 2. Missing Required Fields
 
 For each file, check frontmatter against the schema:
+
 - tasks: must have `project`, `status`, `priority`
 - contacts: must have `first_name`, `last_name`, `account`
 - deals: must have `account`, `stage`
@@ -48,25 +52,30 @@ Check file bodies for common template placeholder text. Flag files with unedited
 
 ### 5. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Audit Report | {today's date}
 ---
 
 COLLECTION COUNTS:
+
 - Accounts: {N}, Contacts: {N}, Deals: {N}, Projects: {N}
 - Tasks: {N}, Meetings: {N}, Journals: {N}, KB: {N}
 
 DUPLICATE UIDS ({count}):
+
 - {collection}: uid {N} appears in {file1}, {file2}
 
 MISSING FIELDS ({count}):
+
 - {file path} — missing {field}
 
 STATUS INCONSISTENCIES ({count}):
+
 - {description}
 
 TEMPLATE LEFTOVERS ({count}):
+
 - {file path} — body contains placeholder text
 
 HEALTH SCORE: {clean checks}/{total checks} ({%})

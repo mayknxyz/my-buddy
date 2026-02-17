@@ -4,9 +4,11 @@ description: Monthly review — task velocity, deal outcomes, project milestones
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -31,7 +33,7 @@ Parse the target month from `$ARGUMENTS` or default to the current calendar mont
 
 ### 3. Output
 
-```
+```text
 ---
 {PERSONA NAME} | Monthly Report | {month name YYYY}
 ---

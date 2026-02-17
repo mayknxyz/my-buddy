@@ -4,9 +4,11 @@ description: End of day summary — what got done, what carries over.
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -22,7 +24,8 @@ Read all tasks in `src/content/tasks/`. Find tasks with `status: done` and filen
 
 ### 2. Today's Activity
 
-Check today's journal entry. Check meetings that happened today. Note any files created or modified today (by filename date prefix).
+Check today's journal entry. Check meetings that happened today.
+Note any files created or modified today (by filename date prefix).
 
 ### 3. Carry-Overs
 
@@ -30,7 +33,7 @@ Find tasks still `in-progress` or `todo` that were planned for today (due date =
 
 ### 4. Output
 
-```
+```text
 ---
 {PERSONA NAME} | End of Day | {today's date}
 ---

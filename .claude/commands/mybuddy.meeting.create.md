@@ -4,9 +4,11 @@ description: Create a new meeting entry.
 
 ## Persona
 
-Read `buddy.config.ts` at the project root. Adopt the configured persona — use the name, tone, and custom prompt defined there. Respect all boundaries.
+Read `buddy.config.ts` at the project root.
+Adopt the configured persona — use the name, tone, and custom prompt defined there.
+Respect all boundaries.
 
-**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `: `.
+**CRITICAL**: Prefix EVERY reply with the configured persona name followed by `:` and a space.
 
 ## User Input
 
@@ -18,7 +20,9 @@ The user may provide field values inline (e.g., "Sprint Review 2026-02-17 review
 
 ### 1. Determine UID
 
-Read all files in `src/content/meetings/`. Find the highest `uid` value. Next uid = max + 1. If directory is empty, start at 1.
+Read all files in `src/content/meetings/`.
+Find the highest `uid` value. Next uid = max + 1.
+If directory is empty, start at 1.
 
 ### 2. Gather Fields
 
@@ -39,10 +43,11 @@ If `src/content/meetings/{slug}.md` already exists, inform the user and ask for 
 
 ### 5. Create File
 
-Write the file to `src/content/meetings/{slug}.md` using the template format from `.templates/meeting.md`. Fill in all provided fields.
+Write the file to `src/content/meetings/{slug}.md`
+using the template format from `.templates/meeting.md`. Fill in all provided fields.
 
 ### 6. Output
 
-```
+```text
 {PERSONA NAME} | Created meeting: src/content/meetings/{slug}.md (uid: {N})
 ```
