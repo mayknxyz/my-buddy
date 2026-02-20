@@ -96,6 +96,17 @@ export function statusVariant(status: string): BadgeVariant {
 		// Interaction direction
 		inbound: "info",
 		outbound: "accent",
+		// Proposal
+		accepted: "success",
+		rejected: "danger",
+		// Payment
+		pending: "warning",
+		confirmed: "success",
+		failed: "danger",
+		// Tax
+		"in-progress": "info",
+		filed: "success",
+		audited: "warning",
 	};
 
 	return map[status] ?? "neutral";
@@ -146,6 +157,51 @@ export function priorityLabel(priority: string): string {
 		low: "Low",
 	};
 	return map[priority] ?? priority;
+}
+
+/** Convert a payment method slug to a human-readable label. */
+export function paymentMethodLabel(method: string): string {
+	const map: Record<string, string> = {
+		"bank-transfer": "Bank Transfer",
+		paypal: "PayPal",
+		stripe: "Stripe",
+		cash: "Cash",
+	};
+	return map[method] ?? method;
+}
+
+/** Convert an expense category slug to a human-readable label. */
+export function expenseCategoryLabel(category: string): string {
+	const map: Record<string, string> = {
+		software: "Software",
+		hardware: "Hardware",
+		travel: "Travel",
+		marketing: "Marketing",
+		office: "Office",
+		other: "Other",
+	};
+	return map[category] ?? category;
+}
+
+/** Convert a contract type slug to a human-readable label. */
+export function contractTypeLabel(type: string): string {
+	const map: Record<string, string> = {
+		"service-agreement": "Service Agreement",
+		nda: "NDA",
+		msa: "MSA",
+		sow: "SOW",
+	};
+	return map[type] ?? type;
+}
+
+/** Convert a recurring frequency slug to a human-readable label. */
+export function recurringLabel(recurring: string): string {
+	const map: Record<string, string> = {
+		monthly: "Monthly",
+		annual: "Annual",
+		"one-time": "One-time",
+	};
+	return map[recurring] ?? recurring;
 }
 
 /** Extract the client slug from a folder-namespaced content ID. */

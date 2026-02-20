@@ -16,6 +16,8 @@ import {
   clientSlugFromId,
   meetingTypeLabel,
   priorityLabel,
+  expenseCategoryLabel,
+  recurringLabel,
 } from "@/lib/format";
 import { getCollection, render } from "astro:content";
 
@@ -66,6 +68,19 @@ const recentTimelog = data.timelog
 const invoices = data.invoices.sort(
   (a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
 );
+
+// Sort expenses by date descending
+const recentExpenses = data.expenses
+  .sort((a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 10);
+const totalExpenses = data.expenses.reduce((sum: number, e: any) => sum + (e.data.amount ?? 0), 0);
+
+// Budget — use the first budget entry if available
+const budget = data.budgets.length > 0 ? data.budgets[0] : null;
+const budgetPlanned = (budget as any)?.data?.planned ?? 0;
+const budgetSpent = (budget as any)?.data?.spent ?? 0;
+const budgetRemaining = budgetPlanned - budgetSpent;
+const budgetUtilization = budgetPlanned > 0 ? Math.round((budgetSpent / budgetPlanned) * 100) : 0;
 
 // Resolve team member names
 const allTeam = await getCollection("team").catch(() => []);
@@ -239,6 +254,57 @@ for (const m of allTeam) {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {/* Budget */}
+      {budget && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Budget <span class="text-sm font-normal text-text-muted">({(budget as any).data.period})</span></h2>
+          <div class="mb-4 flex gap-4">
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class="text-2xl font-bold tabular-nums">{formatCurrency(budgetPlanned)}</div>
+              <div class="text-sm text-text-muted">Planned</div>
+            </div>
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class="text-2xl font-bold tabular-nums">{formatCurrency(budgetSpent)}</div>
+              <div class="text-sm text-text-muted">Spent</div>
+            </div>
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class={`text-2xl font-bold tabular-nums ${budgetRemaining < 0 ? "text-danger" : ""}`}>
+                {formatCurrency(budgetRemaining)}
+              </div>
+              <div class="text-sm text-text-muted">Remaining</div>
+            </div>
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class={`text-2xl font-bold tabular-nums ${budgetUtilization > 100 ? "text-danger" : budgetUtilization > 80 ? "text-warning" : ""}`}>
+                {budgetUtilization}%
+              </div>
+              <div class="text-sm text-text-muted">Utilization</div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Expenses */}
+      {recentExpenses.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Expenses <span class="text-sm font-normal text-text-muted">({formatCurrency(totalExpenses)} total)</span></h2>
+          <div class="space-y-1">
+            {recentExpenses.map((expense: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-2 hover:border-border hover:bg-surface-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-text-muted">{formatDate(expense.data.date)}</span>
+                  <span>{expense.data.title}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="font-medium tabular-nums">{formatCurrency(expense.data.amount)}</span>
+                  <Badge variant={statusVariant(expense.data.category)}>{expenseCategoryLabel(expense.data.category)}</Badge>
+                  <Badge variant="neutral">{recurringLabel(expense.data.recurring)}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

@@ -23,6 +23,8 @@ const CHORD_ROUTES: Record<string, string> = {
 	j: "/journal",
 	a: "/assets",
 	e: "/interactions",
+	x: "/expenses",
+	y: "/payments",
 };
 
 /** Get all navigable items on the page. */

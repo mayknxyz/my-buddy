@@ -1,0 +1,149 @@
+---
+/**
+ * Invoice detail page.
+ * Uses rest params to handle /invoices/{client}/{invoice} URLs.
+ * Shows invoice info, payment history, balance, and rendered markdown body.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { getInvoiceWithPayments } from "@/lib/relations";
+import {
+  statusVariant,
+  formatDate,
+  formatCurrency,
+  clientSlugFromId,
+  paymentMethodLabel,
+} from "@/lib/format";
+import { getCollection, render } from "astro:content";
+
+export async function getStaticPaths() {
+  const invoices = await getCollection("invoices").catch(() => []);
+  return invoices.map((inv) => {
+    // WHY: Invoice IDs are "{client-slug}/{invoice-slug}"
+    const parts = inv.id.split("/");
+    return {
+      params: { slug: parts.join("/") },
+      props: { invoiceId: inv.id },
+    };
+  });
+}
+
+const { invoiceId } = Astro.props;
+const slugParts = (Astro.params.slug as string).split("/");
+const clientSlug = slugParts[0];
+const invoiceSlug = slugParts[slugParts.length - 1];
+
+const data = await getInvoiceWithPayments(invoiceId ?? `${clientSlug}/${invoiceSlug}`);
+
+if (!data) {
+  return Astro.redirect("/invoices");
+}
+
+const invoice = data.invoice;
+const { Content } = await render(invoice as any);
+
+const clientName = (data.client as any)?.data?.name ?? clientSlug;
+const projectName = (data.project as any)?.data?.title;
+const projectSlug = (data.project as any)?.id ? clientSlugFromId((data.project as any).id) : null;
+
+// Sort payments by date descending
+const payments = data.payments.sort(
+  (a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+const isOverdue = (invoice as any).data.status === "overdue" ||
+  ((invoice as any).data.status === "sent" && new Date((invoice as any).data.due) < new Date());
+---
+
+<BaseLayout title={`${(invoice as any).data.id} — Invoices`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title={(invoice as any).data.id}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Invoices", href: "/invoices" },
+        { label: (invoice as any).data.id },
+      ]}
+    >
+      <Badge variant={statusVariant((invoice as any).data.status)}>{(invoice as any).data.status}</Badge>
+    </PageHeader>
+
+    {/* Info row */}
+    <div class="mb-8 flex flex-wrap gap-6 text-sm">
+      <div>
+        <span class="text-text-muted">Client:</span>{" "}
+        <a href={`/clients/${clientSlug}`} class="text-[var(--color-accent)] hover:underline">
+          {clientName}
+        </a>
+      </div>
+      {projectName && projectSlug && (
+        <div>
+          <span class="text-text-muted">Project:</span>{" "}
+          <a href={`/projects/${projectSlug}`} class="text-[var(--color-accent)] hover:underline">
+            {projectName}
+          </a>
+        </div>
+      )}
+      <div>
+        <span class="text-text-muted">Date:</span>{" "}
+        <span class="text-text-secondary">{formatDate((invoice as any).data.date)}</span>
+      </div>
+      <div>
+        <span class="text-text-muted">Due:</span>{" "}
+        <span class={isOverdue ? "font-medium text-danger" : "text-text-secondary"}>
+          {formatDate((invoice as any).data.due)}
+        </span>
+      </div>
+    </div>
+
+    <div class="space-y-8">
+      {/* Payment summary cards */}
+      <section>
+        <div class="flex gap-4">
+          <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+            <div class="text-2xl font-bold tabular-nums">{formatCurrency((invoice as any).data.amount)}</div>
+            <div class="text-sm text-text-muted">Amount</div>
+          </div>
+          <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+            <div class="text-2xl font-bold tabular-nums">{formatCurrency(data.totalPaid)}</div>
+            <div class="text-sm text-text-muted">Paid</div>
+          </div>
+          <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+            <div class={`text-2xl font-bold tabular-nums ${data.balance > 0 ? "text-danger" : ""}`}>
+              {formatCurrency(data.balance)}
+            </div>
+            <div class="text-sm text-text-muted">Balance</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Payments */}
+      {payments.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Payments <span class="text-sm font-normal text-text-muted">({payments.length})</span></h2>
+          <div class="space-y-1">
+            {payments.map((payment: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                <div>
+                  <span class="font-medium">{payment.data.id}</span>
+                  <span class="ml-2 text-sm text-text-muted">{formatDate(payment.data.date)}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="font-medium tabular-nums">{formatCurrency(payment.data.amount)}</span>
+                  <Badge variant={statusVariant(payment.data.method)}>{paymentMethodLabel(payment.data.method)}</Badge>
+                  <Badge variant={statusVariant(payment.data.status)}>{payment.data.status}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Markdown body */}
+      <section class="prose prose-sm max-w-none">
+        <Content />
+      </section>
+    </div>
+  </main>
+</BaseLayout>

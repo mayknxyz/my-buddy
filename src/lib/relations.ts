@@ -37,6 +37,8 @@ export interface ProjectWithRelations {
 	timelog: Entry[];
 	files: Entry[];
 	invoices: Entry[];
+	expenses: Entry[];
+	budgets: Entry[];
 	client: Entry | undefined;
 	contacts: Entry[];
 	interactions: Entry[];
@@ -103,6 +105,8 @@ export async function getProjectWithRelations(slug: string): Promise<ProjectWith
 		allTimelog,
 		allFiles,
 		allInvoices,
+		allExpenses,
+		allBudgets,
 		allClients,
 		allContacts,
 		allInteractions,
@@ -114,6 +118,8 @@ export async function getProjectWithRelations(slug: string): Promise<ProjectWith
 		safeGetCollection<Entry>("timelog"),
 		safeGetCollection<Entry>("files"),
 		safeGetCollection<Entry>("invoices"),
+		safeGetCollection<Entry>("expenses"),
+		safeGetCollection<Entry>("budgets"),
 		safeGetCollection<Entry>("clients"),
 		safeGetCollection<Entry>("contacts"),
 		safeGetCollection<Entry>("interactions"),
@@ -131,6 +137,9 @@ export async function getProjectWithRelations(slug: string): Promise<ProjectWith
 		timelog: allTimelog.filter((t: any) => t.id.startsWith(`${slug}/`)),
 		files: allFiles.filter((f: any) => f.id.startsWith(`${slug}/`)),
 		invoices: allInvoices.filter((i: any) => i.data.project === slug),
+		expenses: allExpenses.filter((e: any) => e.id.startsWith(`${slug}/`)),
+		// WHY: Budgets use index.md so glob loader gives ID "acme-website" not "acme-website/index"
+		budgets: allBudgets.filter((b: any) => b.id === slug || b.id.startsWith(`${slug}/`)),
 		client: clientSlug
 			? allClients.find((c: any) => c.id === clientSlug)
 			: undefined,
@@ -226,6 +235,55 @@ export async function getInvoiceSummary(): Promise<InvoiceSummary> {
 	}
 
 	return summary;
+}
+
+// ---------------------------------------------------------------------------
+// 4b. getInvoiceWithPayments
+// ---------------------------------------------------------------------------
+
+/** Invoice with resolved client, project, payments, and balance. */
+export interface InvoiceWithPayments {
+	invoice: Entry;
+	client: Entry | undefined;
+	project: Entry | undefined;
+	payments: Entry[];
+	totalPaid: number;
+	balance: number;
+}
+
+/**
+ * Fetch an invoice by content ID and resolve its client, project, and payments.
+ * Payment.invoice references the file slug (e.g. "inv-001"), not the full
+ * content ID ("acme-corp/inv-001"), so we match via `id.split("/").pop()`.
+ */
+export async function getInvoiceWithPayments(contentId: string): Promise<InvoiceWithPayments | null> {
+	const [allInvoices, allClients, allProjects, allPayments] = await Promise.all([
+		safeGetCollection<Entry>("invoices"),
+		safeGetCollection<Entry>("clients"),
+		safeGetCollection<Entry>("projects"),
+		safeGetCollection<Entry>("payments"),
+	]);
+
+	const invoice = allInvoices.find((i: any) => i.id === contentId);
+	if (!invoice) return null;
+
+	const invoiceFileSlug = contentId.split("/").pop()!;
+	const clientSlug = (invoice as any).data.client;
+	const projectSlug = (invoice as any).data.project;
+
+	const payments = allPayments.filter(
+		(p: any) => p.data.invoice === invoiceFileSlug,
+	);
+	const totalPaid = payments.reduce((sum, p: any) => sum + (p.data.amount ?? 0), 0);
+
+	return {
+		invoice,
+		client: clientSlug ? allClients.find((c: any) => c.id === clientSlug) : undefined,
+		project: projectSlug ? allProjects.find((p: any) => p.id === projectSlug) : undefined,
+		payments,
+		totalPaid,
+		balance: (invoice as any).data.amount - totalPaid,
+	};
 }
 
 // ---------------------------------------------------------------------------

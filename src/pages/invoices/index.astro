@@ -1,0 +1,122 @@
+---
+/**
+ * Invoices list page.
+ * Displays all invoices sorted date-descending with status and client filters.
+ * Summary bar shows total invoiced, paid, and outstanding amounts.
+ * Rows link to invoice detail page.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { statusVariant, formatDate, formatCurrency, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const statusFilter = Astro.url.searchParams.get("status");
+const clientFilter = Astro.url.searchParams.get("client");
+
+const [allInvoices, allClients] = await Promise.all([
+  getCollection("invoices").catch(() => []),
+  getCollection("clients").catch(() => []),
+]);
+
+// Resolve client names
+const clientNameMap = new Map<string, string>();
+for (const c of allClients) {
+  clientNameMap.set(clientSlugFromId(c.id), c.data.name);
+}
+
+// Apply filters
+let invoices = allInvoices;
+if (statusFilter) invoices = invoices.filter((i) => i.data.status === statusFilter);
+if (clientFilter) invoices = invoices.filter((i) => i.data.client === clientFilter);
+
+// Sort by date descending
+invoices = invoices.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Summary stats
+const totalInvoiced = invoices.reduce((sum, i) => sum + i.data.amount, 0);
+const totalPaid = invoices
+  .filter((i) => i.data.status === "paid")
+  .reduce((sum, i) => sum + i.data.amount, 0);
+const totalOutstanding = invoices
+  .filter((i) => i.data.status === "sent" || i.data.status === "overdue")
+  .reduce((sum, i) => sum + i.data.amount, 0);
+
+const statusOptions = [
+  { value: "draft", label: "Draft" },
+  { value: "sent", label: "Sent" },
+  { value: "paid", label: "Paid" },
+  { value: "overdue", label: "Overdue" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const clientOptions = Array.from(clientNameMap.entries())
+  .sort((a, b) => a[1].localeCompare(b[1]))
+  .map(([value, label]) => ({ value, label }));
+---
+
+<BaseLayout title="Invoices — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Invoices" count={invoices.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Invoices" }]}>
+      <FilterBar>
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+        <FilterSelect name="client" label="Client" options={clientOptions} selected={clientFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {invoices.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalInvoiced)}</div>
+          <div class="text-sm text-text-muted">Total Invoiced</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalPaid)}</div>
+          <div class="text-sm text-text-muted">Paid</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalOutstanding)}</div>
+          <div class="text-sm text-text-muted">Outstanding</div>
+        </div>
+      </div>
+    )}
+
+    {invoices.length === 0 ? (
+      <EmptyState title="No invoices found" description={statusFilter || clientFilter ? "Try changing the filters." : "Create your first invoice to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {invoices.map((inv) => {
+          const clientSlug = inv.data.client;
+          const clientName = clientNameMap.get(clientSlug) ?? clientSlug;
+          const invoiceSlug = inv.id.split("/").pop();
+
+          return (
+            <a
+              href={`/invoices/${clientSlug}/${invoiceSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{inv.data.id}</span>
+                  <span class="text-sm text-text-muted">{formatDate(inv.data.date)}</span>
+                </div>
+                <div class="mt-0.5 text-sm text-text-muted">{clientName}</div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <span class="font-medium tabular-nums">{formatCurrency(inv.data.amount)}</span>
+                <Badge variant={statusVariant(inv.data.status)}>{inv.data.status}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>
