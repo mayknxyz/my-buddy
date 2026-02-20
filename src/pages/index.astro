@@ -1,0 +1,221 @@
+---
+/**
+ * Dashboard home page.
+ * Displays summary widgets using cross-collection queries from relations.ts.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import DashboardWidget from "@/components/molecules/DashboardWidget.astro";
+import { loadConfig } from "@/lib/config";
+import { getCollection } from "astro:content";
+import { getInvoiceSummary, getExpiringAssets, getOpportunityPipeline } from "@/lib/relations";
+
+const config = await loadConfig();
+
+// Fetch all needed collections in parallel
+const [
+  projects,
+  allTasks,
+  allMeetings,
+  allInteractions,
+  allTimelog,
+  allLeads,
+] = await Promise.all([
+  getCollection("projects").catch(() => []),
+  getCollection("tasks").catch(() => []),
+  getCollection("meetings").catch(() => []),
+  getCollection("interactions").catch(() => []),
+  getCollection("timelog").catch(() => []),
+  getCollection("leads").catch(() => []),
+]);
+
+// Active projects
+const activeProjects = projects.filter((p) => p.data.status === "active");
+
+// Tasks due this week
+const now = new Date();
+const weekEnd = new Date(now);
+weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
+const tasksDueThisWeek = allTasks.filter((t) => {
+  if (t.data.status === "done") return false;
+  const due = t.data.due;
+  return due && new Date(due) <= weekEnd;
+});
+
+// Invoice summary
+const invoiceSummary = await getInvoiceSummary();
+const unpaidTotal = invoiceSummary.sent.total + invoiceSummary.overdue.total;
+const unpaidCount = invoiceSummary.sent.count + invoiceSummary.overdue.count;
+
+// Expiring assets (30 days)
+const expiringAssets = await getExpiringAssets(30);
+
+// Today's meetings
+const todayStr = now.toISOString().slice(0, 10);
+const todaysMeetings = allMeetings.filter(
+  (m) => new Date(m.data.date).toISOString().slice(0, 10) === todayStr
+);
+
+// Recent interactions (last 7 days)
+const weekAgo = new Date(now);
+weekAgo.setDate(weekAgo.getDate() - 7);
+const recentInteractions = allInteractions
+  .filter((i) => new Date(i.data.date) >= weekAgo)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 5);
+
+// Pipeline summary
+const pipeline = await getOpportunityPipeline();
+const activeLeads = allLeads.filter(
+  (l) => l.data.status !== "disqualified"
+).length;
+const activeOpps = pipeline
+  .filter((s) => !["closed-won", "closed-lost"].includes(s.stage))
+  .reduce((sum, s) => sum + s.opportunities.length, 0);
+const pipelineValue = pipeline
+  .filter((s) => !["closed-won", "closed-lost"].includes(s.stage))
+  .reduce((sum, s) => sum + s.totalValue, 0);
+
+// Time logged this week
+const weekStart = new Date(now);
+weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+const timeThisWeek = allTimelog
+  .filter((t) => new Date(t.data.date) >= weekStart)
+  .reduce((sum, t) => sum + t.data.hours, 0);
+
+/**
+ * Format currency for display.
+ */
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+---
+
+<BaseLayout title={`${config.instance.name} — Dashboard`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold">{config.instance.name}</h1>
+      <p class="mt-1 text-text-secondary">{config.persona.greeting}</p>
+    </header>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Row 1: Key metrics */}
+      <DashboardWidget title="Active Projects" value={activeProjects.length} href="/projects">
+        {activeProjects.length > 0 && (
+          <ul class="space-y-0.5">
+            {activeProjects.slice(0, 3).map((p) => (
+              <li class="truncate">{p.data.title}</li>
+            ))}
+            {activeProjects.length > 3 && (
+              <li class="text-text-muted">+{activeProjects.length - 3} more</li>
+            )}
+          </ul>
+        )}
+      </DashboardWidget>
+
+      <DashboardWidget title="Tasks Due This Week" value={tasksDueThisWeek.length} href="/tasks">
+        {tasksDueThisWeek.length > 0 && (
+          <ul class="space-y-0.5">
+            {tasksDueThisWeek.slice(0, 3).map((t) => (
+              <li class="truncate">
+                <span class={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
+                  t.data.priority === "high" ? "bg-danger" :
+                  t.data.priority === "medium" ? "bg-warning" : "bg-info"
+                }`} />
+                {t.data.title}
+              </li>
+            ))}
+          </ul>
+        )}
+      </DashboardWidget>
+
+      <DashboardWidget
+        title="Unpaid Invoices"
+        value={unpaidCount > 0 ? formatCurrency(unpaidTotal) : "$0"}
+        href="/invoices"
+      >
+        {unpaidCount > 0 && (
+          <span>{unpaidCount} invoice{unpaidCount !== 1 ? "s" : ""} outstanding</span>
+        )}
+        {invoiceSummary.overdue.count > 0 && (
+          <span class="text-danger"> ({invoiceSummary.overdue.count} overdue)</span>
+        )}
+      </DashboardWidget>
+
+      <DashboardWidget title="Expiring Soon" value={expiringAssets.length}>
+        {expiringAssets.length > 0 ? (
+          <ul class="space-y-0.5">
+            {expiringAssets.slice(0, 3).map((a) => (
+              <li class="truncate">
+                <span class="text-warning">{a.type}</span> — {a.label}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span class="text-text-muted">Nothing expiring in 30 days</span>
+        )}
+      </DashboardWidget>
+
+      {/* Row 2: Activity */}
+      <DashboardWidget title="Today's Meetings" value={todaysMeetings.length} href="/meetings">
+        {todaysMeetings.length > 0 ? (
+          <ul class="space-y-0.5">
+            {todaysMeetings.map((m) => (
+              <li class="truncate">{m.data.title}</li>
+            ))}
+          </ul>
+        ) : (
+          <span class="text-text-muted">No meetings today</span>
+        )}
+      </DashboardWidget>
+
+      <DashboardWidget title="Recent Interactions" value={recentInteractions.length}>
+        {recentInteractions.length > 0 ? (
+          <ul class="space-y-0.5">
+            {recentInteractions.slice(0, 3).map((i) => (
+              <li class="truncate">
+                <span class="text-text-muted">{i.data.type}</span> — {i.data.title}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span class="text-text-muted">No recent interactions</span>
+        )}
+      </DashboardWidget>
+
+      <DashboardWidget title="Pipeline" href="/opportunities">
+        <div class="space-y-0.5">
+          <div class="flex justify-between">
+            <span>Leads</span>
+            <span class="font-medium">{activeLeads}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Opportunities</span>
+            <span class="font-medium">{activeOpps}</span>
+          </div>
+          {pipelineValue > 0 && (
+            <div class="mt-1 border-t border-border pt-1 flex justify-between">
+              <span>Pipeline value</span>
+              <span class="font-medium text-[var(--color-accent)]">{formatCurrency(pipelineValue)}</span>
+            </div>
+          )}
+        </div>
+      </DashboardWidget>
+
+      <DashboardWidget title="Time This Week" value={`${timeThisWeek.toFixed(1)}h`} href="/timelog">
+        {timeThisWeek > 0 ? (
+          <span>Logged across all projects</span>
+        ) : (
+          <span class="text-text-muted">No time logged yet</span>
+        )}
+      </DashboardWidget>
+    </div>
+
+    <footer class="mt-8 text-center text-xs text-text-muted">
+      Press <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono">?</kbd> for keyboard shortcuts
+    </footer>
+  </main>
+</BaseLayout>

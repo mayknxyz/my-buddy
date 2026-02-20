@@ -1,0 +1,31 @@
+---
+/**
+ * Base HTML shell for all pages.
+ * Sets the accent color from buddy.config.ts via [data-accent] on <html>.
+ * Includes keyboard navigation and help modal.
+ */
+import "@/styles/global.css";
+import { loadConfig } from "@/lib/config";
+import HelpModal from "@/components/organisms/HelpModal.astro";
+
+interface Props {
+  title?: string;
+}
+
+const config = await loadConfig();
+const { title = "my-buddy" } = Astro.props;
+const accent = config.instance.accent;
+---
+
+<html lang="en" data-accent={accent}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-surface-0 text-text-primary">
+    <slot />
+    <HelpModal />
+    <script src="@/scripts/keyboard.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,90 @@
+---
+/**
+ * Keyboard shortcut reference modal.
+ * Toggled by pressing ? — hidden by default.
+ */
+---
+
+<div
+  id="help-modal"
+  class="fixed inset-0 z-50 hidden flex items-center justify-center bg-surface-0/80 backdrop-blur-sm"
+>
+  <div class="mx-4 w-full max-w-lg rounded-lg border border-border bg-surface-1 p-6 shadow-2xl">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Keyboard Shortcuts</h2>
+      <button
+        id="help-modal-close"
+        class="rounded px-2 py-1 text-text-muted hover:bg-surface-2 hover:text-text-primary"
+        aria-label="Close help modal"
+      >
+        Esc
+      </button>
+    </div>
+
+    <div class="space-y-4 text-sm">
+      {/* Navigation */}
+      <div>
+        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">Navigation</h3>
+        <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">j</kbd>
+          <span class="text-text-secondary">Next item</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">k</kbd>
+          <span class="text-text-secondary">Previous item</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">Enter</kbd>
+          <span class="text-text-secondary">Open selected</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">/</kbd>
+          <span class="text-text-secondary">Focus search</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">Esc</kbd>
+          <span class="text-text-secondary">Close / deselect</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">?</kbd>
+          <span class="text-text-secondary">Toggle this help</span>
+        </div>
+      </div>
+
+      {/* Go-to shortcuts */}
+      <div>
+        <h3 class="mb-2 text-xs font-medium uppercase tracking-wide text-text-muted">
+          Go to <span class="text-text-muted">(press g then key)</span>
+        </h3>
+        <div class="grid grid-cols-[auto_1fr_auto_1fr] gap-x-4 gap-y-1">
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g z</kbd>
+          <span class="text-text-secondary">Dashboard</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g p</kbd>
+          <span class="text-text-secondary">Projects</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g t</kbd>
+          <span class="text-text-secondary">Tasks</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g c</kbd>
+          <span class="text-text-secondary">Clients</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g l</kbd>
+          <span class="text-text-secondary">Leads</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g o</kbd>
+          <span class="text-text-secondary">Opportunities</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g i</kbd>
+          <span class="text-text-secondary">Invoices</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g m</kbd>
+          <span class="text-text-secondary">Meetings</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g k</kbd>
+          <span class="text-text-secondary">Knowledge</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g j</kbd>
+          <span class="text-text-secondary">Journal</span>
+          <kbd class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">g a</kbd>
+          <span class="text-text-secondary">Assets</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Close modal on button click
+  document.getElementById("help-modal-close")?.addEventListener("click", () => {
+    document.getElementById("help-modal")?.classList.add("hidden");
+  });
+
+  // Close modal on backdrop click
+  document.getElementById("help-modal")?.addEventListener("click", (e) => {
+    if (e.target === e.currentTarget) {
+      (e.currentTarget as HTMLElement).classList.add("hidden");
+    }
+  });
+</script>
