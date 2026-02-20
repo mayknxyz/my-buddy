@@ -132,6 +132,8 @@ my-buddy/
 │   ├── journal.md
 │   ├── sop.md
 │   ├── compliance.md
+│   ├── tax.md
+│   ├── file.md
 │   └── kb.md
 ├── src/
 │   ├── content.config.ts
@@ -510,6 +512,21 @@ receipt: https://pub-xxx.r2.dev/test-project/figma-receipt.pdf
 ---
 ```
 
+**General (non-project) expenses** use `general/` as the folder namespace:
+
+```yaml
+# content/expenses/general/coworking-february.md
+---
+title: Coworking Space — February
+project: ~                # null for general business expenses
+category: office
+amount: 200
+date: 2026-02-01
+recurring: monthly
+receipt: https://pub-xxx.r2.dev/general/coworking-feb-2026.pdf
+---
+```
+
 #### 3.3.5 Budgets
 
 ```yaml
@@ -519,6 +536,19 @@ project: test-project
 period: 2026
 planned: 5000
 spent: 1200
+currency: USD
+---
+```
+
+**General (non-project) budgets** use `general/` as the folder namespace:
+
+```yaml
+# content/budgets/general/index.md
+---
+project: ~                # null for general business budget
+period: 2026
+planned: 12000
+spent: 3400
 currency: USD
 ---
 ```
@@ -565,7 +595,7 @@ file: https://pub-xxx.r2.dev/acme-corp/contract-v1.pdf
 ---
 project: test-project
 task: initiate-project
-member: mike
+member: mike              # slug ref to team/ collection
 date: 2026-02-10
 hours: 3.5
 billable: true
@@ -734,7 +764,7 @@ The knowledge base has three layers: project-scoped, client-scoped, and global b
 # content/knowledge/base/dev/sveltekit/auth-patterns.md
 ---
 title: SvelteKit Auth Patterns
-category: dev
+category: dev                   # must match parent folder — included for query convenience
 tags: [sveltekit, auth, supabase]
 related:
   - dev/sveltekit/rls-setup
@@ -906,6 +936,23 @@ tags: [proposal]
 ---
 ```
 
+### 3.14 SOPs (Standard Operating Procedures)
+
+SOPs are standalone documents that codify repeatable processes. They have no parent namespace — each SOP lives at the collection root.
+
+```yaml
+# content/sops/deploy-to-production.md
+---
+title: Deploy to Production
+category: engineering     # engineering | operations | sales | onboarding | other
+status: active            # draft | active | archived
+owner: mike               # slug ref to team/ collection
+last-reviewed: 2026-02-01
+review-cycle: quarterly   # monthly | quarterly | annual
+tags: [deployment, ci-cd]
+---
+```
+
 ---
 
 ## 4. Data Relationships
@@ -921,23 +968,29 @@ tags: [proposal]
 | contacts | client (folder) | clients | Many-to-One |
 | contacts | projects[] | projects | Many-to-Many |
 | contracts | client (folder) | clients | Many-to-One |
+| proposals | client (folder) | clients | Many-to-One |
 | invoices | client (folder) | clients | Many-to-One |
 | invoices | project | projects | Many-to-One |
 | payments | invoice | invoices | Many-to-One |
 | timelog | project (folder) | projects | Many-to-One |
 | timelog | task | tasks | Many-to-One |
+| timelog | member | team | Many-to-One |
 | meetings | project (folder) | projects | Many-to-One |
 | meetings | contacts[] | contacts | Many-to-Many |
 | interactions | client (folder) | clients | Many-to-One |
 | interactions | contact | contacts | Many-to-One |
 | interactions | project | projects | Many-to-One |
+| expenses | project (folder) | projects | Many-to-One |
 | files | project/client (folder) | projects/clients | Many-to-One |
 | campaigns | marketing[] | marketing | One-to-Many |
 | goals | projects[] | projects | Many-to-Many |
 | assets | assigned-to[] | team | Many-to-Many |
 | leave | member (folder) | team | Many-to-One |
+| sops | owner | team | Many-to-One |
 | compliance | applies-to[] | projects | Many-to-Many |
 | roles | (referenced by) | team.role | One-to-Many |
+
+**Note on asymmetric references:** Some relationships are intentionally one-directional. For example, `contacts.projects[]` references projects, but `projects` does not have a `contacts[]` field — contacts for a project are resolved at query time via `contacts.filter(c => c.data.projects.includes(slug))`. This avoids maintaining both sides of the relationship in flat files.
 
 ### 4.2 Query Patterns
 
@@ -1121,6 +1174,8 @@ Wiki-links provide lightweight cross-referencing in Markdown content bodies usin
 | `[[collection/slug]]` | Explicit collection | `[[projects/test-project]]` |
 | `[[collection/slug\|text]]` | Explicit + custom label | `[[projects/test-project\|Test]]` |
 
+> **Note:** The `|` character separates slug from display text in wiki-links. The backslash (`\|`) in the table above is Markdown table escaping — the actual syntax in content files is `[[slug|display text]]` without a backslash.
+
 **Resolution priority** (when no collection prefix): clients > contacts > projects > tasks > leads > opportunities > kb > meetings > journal
 
 ### 7.2 Build Process
@@ -1261,7 +1316,15 @@ Each collection gets five standard commands:
 | `/mybuddy.{collection}.list` | List entries with optional filters |
 | `/mybuddy.{collection}.delete` | Delete an entry |
 
-**Collections with CRUD:** projects, tasks, clients, contacts, leads, opportunities, interactions, meetings, proposals, contracts, invoices, payments, expenses, timelog, team, kb, journal, goals, ideas, subscriptions, sops, compliance
+**Collections with CRUD:** projects, tasks, clients, contacts, leads, opportunities, interactions, meetings, proposals, contracts, invoices, payments, expenses, budgets, timelog, team, roles, leave, kb, journal, goals, ideas, subscriptions, sops, compliance, campaigns, assets (hardware, software, domains, servers, accounts), marketing (blog, social, newsletter), tax
+
+**Collections without CRUD commands:**
+
+| Collection | Reason |
+|---|---|
+| files | Auto-generated by `upload-file.sh` — use `/mybuddy.files.list` for viewing |
+| knowledge/projects | Managed via project CLAUDE.md context, not standalone CRUD |
+| knowledge/clients | Managed via client CLAUDE.md context, not standalone CRUD |
 
 #### Session Commands
 
@@ -1291,6 +1354,7 @@ Each collection gets five standard commands:
 | `/mybuddy.orphans` | Find unreferenced entries |
 | `/mybuddy.stale` | Overdue tasks, expired items, stale leads |
 | `/mybuddy.blocked` | Blocked tasks across all projects |
+| `/mybuddy.files.list` | List R2 file metadata entries with optional namespace filter |
 
 ---
 
@@ -1301,6 +1365,8 @@ Each collection gets five standard commands:
 Content templates in `.templates/` provide prefilled YAML frontmatter for each collection. CLI scripts and Claude Code commands use these templates to scaffold new entries consistently.
 
 Templates include all required frontmatter fields with placeholder values and comments documenting valid enum options.
+
+> **Note:** The `file.md` template exists for manual file metadata creation but is typically auto-generated by `scripts/upload-file.sh`. The `kb.md` template is shared across all three knowledge sub-collections (`knowledge/projects/`, `knowledge/clients/`, `knowledge/base/`).
 
 ### 10.2 CLI Scripts
 
@@ -1492,7 +1558,7 @@ v1 instance content maps to v2 as follows:
 
 `scripts/migrate-v1.sh` automates the content data conversion:
 
-1. Read v1 content from the instance's `src/content/` directory
+1. Read v1 content from the instance's `src/content/` directory (v1 stored content inside `src/`, not at the repo root)
 2. Transform frontmatter fields (rename `uid` → slug, `underscore_case` → `kebab-case`)
 3. Split `accounts` into `clients/` and `leads/` based on `type` field
 4. Rename `deals/` → `opportunities/`
@@ -1504,21 +1570,21 @@ v1 instance content maps to v2 as follows:
 
 ## 13. Development Phases
 
-| Phase | Scope | Priority |
-|---|---|---|
-| Phase 1 — Foundation | Astro + Bun setup, content collection schemas, wiki-link plugin, global CLAUDE.md, relations helper, dark theme, keyboard nav | Critical |
-| Phase 2 — Core CRM | clients, contacts, leads, opportunities, interactions | High |
-| Phase 3 — Projects | projects, tasks, meetings, timelog | High |
-| Phase 4 — Finance | proposals, contracts, invoices, payments, expenses, budgets | High |
-| Phase 5 — Assets & Subs | assets (all types), subscriptions, compliance | Medium |
-| Phase 6 — Knowledge Base | knowledge (all layers), sops, files, Pagefind search | Medium |
-| Phase 7 — Team & HR | team, roles, leave | Medium |
-| Phase 8 — Strategic | goals, ideas, journal, campaigns, marketing (blog, social, newsletter) | Lower |
-| Phase 9 — R2 Integration | upload scripts, file metadata, wrangler config | Parallel with Phase 4 |
-| Phase 10 — Dashboard | All routes, widgets, relation queries, expiry alerts | Ongoing |
-| Phase 11 — Claude Code Commands | CRUD commands, session commands, daily ops, reporting | Parallel with Phases 2–8 |
-| Phase 12 — Multi-Instance | Scaffolding CLI (`bun create my-buddy`), sync script, `content.example/`, instance management | After Phase 1 |
-| Phase 13 — Migration | v1 data migration script, validation, cleanup | After Phase 3 |
+| Phase | Scope | Priority | Depends On |
+|---|---|---|---|
+| Phase 1 — Foundation | Astro + Bun setup, content collection schemas, wiki-link plugin, global CLAUDE.md, relations helper, dark theme, keyboard nav | Critical | — |
+| Phase 2 — Core CRM | clients, contacts, leads, opportunities, interactions | High | Phase 1 |
+| Phase 3 — Projects | projects, tasks, meetings, timelog | High | Phase 1 |
+| Phase 4 — Finance | proposals, contracts, invoices, payments, expenses, budgets, tax | High | Phases 2–3 |
+| Phase 5 — Assets & Subs | assets (all types), subscriptions, compliance | Medium | Phase 1 |
+| Phase 6 — Knowledge Base | knowledge (all layers), sops, files, Pagefind search | Medium | Phase 1 |
+| Phase 7 — Team & HR | team, roles, leave | Medium | Phase 1 |
+| Phase 8 — Strategic | goals, ideas, journal, campaigns, marketing (blog, social, newsletter) | Lower | Phase 1 |
+| Phase 9 — R2 Integration | upload scripts, file metadata, wrangler config | High | Phase 1 (parallel with Phase 4) |
+| Phase 10 — Dashboard | All routes, widgets, relation queries, expiry alerts | Ongoing | Grows with each phase |
+| Phase 11 — Claude Code Commands | CRUD commands, session commands, daily ops, reporting | Ongoing | Commands added per phase as collections land |
+| Phase 12 — Multi-Instance | Scaffolding CLI (`bun create my-buddy`), sync script, `content.example/`, instance management | Medium | Phase 1 (can start anytime after) |
+| Phase 13 — Migration | v1 data migration script, validation, cleanup | Low | Phase 3 (needs CRM + Projects schemas for validation) |
 
 ---
 

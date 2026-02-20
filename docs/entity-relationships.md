@@ -34,6 +34,8 @@ erDiagram
     ROLES ||--o{ TEAM : "referenced by"
     EXPENSES }o--o| PROJECTS : "project"
     BUDGETS }o--|| PROJECTS : "folder namespace"
+    SOPS }o--|| TEAM : "owner"
+    TIMELOG }o--|| TEAM : "member"
 ```
 
 ## Namespace Strategy
@@ -59,20 +61,28 @@ Relationships are resolved in two ways:
 | contacts | client (folder) | clients | Many-to-One |
 | contacts | projects[] | projects | Many-to-Many |
 | contracts | client (folder) | clients | Many-to-One |
+| proposals | client (folder) | clients | Many-to-One |
 | invoices | client (folder) | clients | Many-to-One |
 | invoices | project | projects | Many-to-One |
 | payments | invoice | invoices | Many-to-One |
 | timelog | project (folder) | projects | Many-to-One |
 | timelog | task | tasks | Many-to-One |
+| timelog | member | team | Many-to-One |
 | meetings | project (folder) | projects | Many-to-One |
 | meetings | contacts[] | contacts | Many-to-Many |
 | interactions | client (folder) | clients | Many-to-One |
 | interactions | contact | contacts | Many-to-One |
 | interactions | project | projects | Many-to-One |
+| expenses | project (folder) | projects | Many-to-One |
 | files | project/client (folder) | projects/clients | Many-to-One |
 | campaigns | marketing[] | marketing | One-to-Many |
 | goals | projects[] | projects | Many-to-Many |
 | assets | assigned-to[] | team | Many-to-Many |
 | leave | member (folder) | team | Many-to-One |
+| sops | owner | team | Many-to-One |
 | compliance | applies-to[] | projects | Many-to-Many |
 | roles | (referenced by) | team.role | One-to-Many |
+
+**Note:** Some relationships are intentionally one-directional. For example,
+`contacts.projects[]` references projects, but `projects` has no `contacts[]`
+field — contacts for a project are resolved at query time via filtering.

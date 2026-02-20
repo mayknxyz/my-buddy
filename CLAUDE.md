@@ -12,7 +12,7 @@ folder names are foreign keys, no database.
 - `src/` — Astro app (pages, components, lib, plugins, styles)
 - `content/` — business data (gitignored in public repo, tracked in instances)
 - `content.example/` — sample data for scaffolding
-- `.templates/` — frontmatter templates for all 34 collections
+- `.templates/` — frontmatter templates (36 files covering all collections)
 - `.claude/commands/` — slash commands for CRUD, daily ops, reporting
 - `scripts/` — CLI scripts (scaffolding, R2 upload, sync, migration)
 - `docs/` — ADRs and Mermaid diagrams
@@ -25,8 +25,8 @@ folder names are foreign keys, no database.
 - `tasks/` — tasks scoped to projects
 - `meetings/` — meeting notes with agenda and action items
 - `timelog/` — billable and non-billable time entries
-- `budgets/` — planned vs actual spend (`index.md`)
-- `expenses/` — project or general business expenses
+- `budgets/` — planned vs actual spend (`index.md`, `general/` for non-project)
+- `expenses/` — project or general business expenses (`general/` for non-project)
 - `knowledge/projects/` — project-specific technical notes
 
 ### Client-scoped (folder: `{client-slug}/`)
