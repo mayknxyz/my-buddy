@@ -1,0 +1,136 @@
+---
+/**
+ * Timelog list page.
+ * Displays all time entries sorted date-descending with project and billable filters.
+ * Summary bar shows total, billable, and non-billable hours for the filtered set.
+ * Rows link to parent project.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { formatDate, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const projectFilter = Astro.url.searchParams.get("project");
+const billableFilter = Astro.url.searchParams.get("billable");
+
+const [allTimelog, allProjects, allTeam] = await Promise.all([
+  getCollection("timelog").catch(() => []),
+  getCollection("projects").catch(() => []),
+  getCollection("team").catch(() => []),
+]);
+
+// Resolve project names
+const projectNameMap = new Map<string, string>();
+for (const p of allProjects) {
+  const slug = clientSlugFromId(p.id);
+  projectNameMap.set(slug, p.data.title);
+}
+
+// Resolve team member names
+const teamNameMap = new Map<string, string>();
+for (const m of allTeam) {
+  teamNameMap.set(m.id, m.data.name);
+}
+
+// Apply filters
+let entries = allTimelog;
+if (projectFilter) entries = entries.filter((t) => t.id.startsWith(`${projectFilter}/`));
+if (billableFilter === "yes") entries = entries.filter((t) => t.data.billable);
+if (billableFilter === "no") entries = entries.filter((t) => !t.data.billable);
+
+// Sort by date descending
+entries = entries.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Summary stats for filtered set
+const totalHours = entries.reduce((sum, t) => sum + t.data.hours, 0);
+const billableHours = entries.filter((t) => t.data.billable).reduce((sum, t) => sum + t.data.hours, 0);
+const nonBillableHours = totalHours - billableHours;
+
+const projectOptions = Array.from(projectNameMap.entries())
+  .sort((a, b) => a[1].localeCompare(b[1]))
+  .map(([value, label]) => ({ value, label }));
+
+const billableOptions = [
+  { value: "yes", label: "Billable" },
+  { value: "no", label: "Non-billable" },
+];
+---
+
+<BaseLayout title="Timelog — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Timelog" count={entries.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Timelog" }]}>
+      <FilterBar>
+        <FilterSelect name="project" label="Project" options={projectOptions} selected={projectFilter ?? undefined} />
+        <FilterSelect name="billable" label="Billable" options={billableOptions} selected={billableFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {entries.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{billableHours.toFixed(1)}h</div>
+          <div class="text-sm text-text-muted">Billable</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{nonBillableHours.toFixed(1)}h</div>
+          <div class="text-sm text-text-muted">Non-billable</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{totalHours.toFixed(1)}h</div>
+          <div class="text-sm text-text-muted">Total</div>
+        </div>
+      </div>
+    )}
+
+    {entries.length === 0 ? (
+      <EmptyState title="No time entries found" description={projectFilter || billableFilter ? "Try changing the filters." : "Log your first time entry to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {entries.map((entry) => {
+          const projectSlug = entry.id.split("/")[0];
+          const projectName = projectNameMap.get(projectSlug) ?? projectSlug;
+          const memberName = teamNameMap.get(entry.data.member) ?? entry.data.member;
+          return (
+            <a
+              href={`/projects/${projectSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-text-muted">{formatDate(entry.data.date)}</span>
+                  <span class="font-medium">{projectName}</span>
+                  {entry.data.task && (
+                    <span class="text-sm text-text-muted">{entry.data.task}</span>
+                  )}
+                </div>
+                <div class="mt-0.5 flex items-center gap-2 text-sm text-text-muted">
+                  <span>{memberName}</span>
+                  {entry.data.description && (
+                    <>
+                      <span>·</span>
+                      <span class="truncate">{entry.data.description}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <span class="font-medium tabular-nums">{entry.data.hours}h</span>
+                <Badge variant={entry.data.billable ? "success" : "neutral"}>
+                  {entry.data.billable ? "billable" : "non-billable"}
+                </Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

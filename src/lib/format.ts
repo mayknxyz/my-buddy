@@ -49,10 +49,13 @@ type BadgeVariant = "success" | "warning" | "danger" | "info" | "neutral" | "acc
 /** Map any status string to a Badge variant color. */
 export function statusVariant(status: string): BadgeVariant {
 	const map: Record<string, BadgeVariant> = {
-		// Client / general
+		// Client / project / general
 		active: "success",
 		inactive: "neutral",
 		churned: "danger",
+		paused: "warning",
+		completed: "success",
+		archived: "neutral",
 		// Lead
 		new: "info",
 		contacted: "warning",
@@ -80,6 +83,16 @@ export function statusVariant(status: string): BadgeVariant {
 		negotiation: "warning",
 		"closed-won": "success",
 		"closed-lost": "danger",
+		// Meeting type
+		kickoff: "accent",
+		standup: "info",
+		review: "warning",
+		demo: "success",
+		internal: "neutral",
+		// Priority
+		high: "danger",
+		medium: "warning",
+		low: "info",
 		// Interaction direction
 		inbound: "info",
 		outbound: "accent",
@@ -110,6 +123,29 @@ export function sourceLabel(source: string): string {
 		cold: "Cold Outreach",
 	};
 	return map[source] ?? source;
+}
+
+/** Convert a meeting type slug to a human-readable label. */
+export function meetingTypeLabel(type: string): string {
+	const map: Record<string, string> = {
+		kickoff: "Kickoff",
+		standup: "Standup",
+		review: "Review",
+		demo: "Demo",
+		internal: "Internal",
+		"in-person": "In Person",
+	};
+	return map[type] ?? type;
+}
+
+/** Convert a priority slug to a human-readable label. */
+export function priorityLabel(priority: string): string {
+	const map: Record<string, string> = {
+		high: "High",
+		medium: "Medium",
+		low: "Low",
+	};
+	return map[priority] ?? priority;
 }
 
 /** Extract the client slug from a folder-namespaced content ID. */

@@ -1,0 +1,100 @@
+---
+/**
+ * Meetings list page.
+ * Displays all meetings sorted date-descending with type and project filters.
+ * Rows link to parent project.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { statusVariant, formatDate, meetingTypeLabel, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const typeFilter = Astro.url.searchParams.get("type");
+const projectFilter = Astro.url.searchParams.get("project");
+
+const [allMeetings, allProjects] = await Promise.all([
+  getCollection("meetings").catch(() => []),
+  getCollection("projects").catch(() => []),
+]);
+
+// Resolve project names for display and filter dropdown
+const projectNameMap = new Map<string, string>();
+for (const p of allProjects) {
+  const slug = clientSlugFromId(p.id);
+  projectNameMap.set(slug, p.data.title);
+}
+
+// Apply filters
+let meetings = allMeetings;
+if (typeFilter) meetings = meetings.filter((m) => m.data.type === typeFilter);
+if (projectFilter) meetings = meetings.filter((m) => m.id.startsWith(`${projectFilter}/`));
+
+// Sort by date descending
+meetings = meetings.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+const typeOptions = [
+  { value: "kickoff", label: "Kickoff" },
+  { value: "standup", label: "Standup" },
+  { value: "review", label: "Review" },
+  { value: "demo", label: "Demo" },
+  { value: "internal", label: "Internal" },
+];
+
+const projectOptions = Array.from(projectNameMap.entries())
+  .sort((a, b) => a[1].localeCompare(b[1]))
+  .map(([value, label]) => ({ value, label }));
+---
+
+<BaseLayout title="Meetings — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Meetings" count={meetings.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Meetings" }]}>
+      <FilterBar>
+        <FilterSelect name="type" label="Type" options={typeOptions} selected={typeFilter ?? undefined} />
+        <FilterSelect name="project" label="Project" options={projectOptions} selected={projectFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {meetings.length === 0 ? (
+      <EmptyState title="No meetings found" description={typeFilter || projectFilter ? "Try changing the filters." : "Add your first meeting to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {meetings.map((meeting) => {
+          const projectSlug = meeting.id.split("/")[0];
+          const projectName = projectNameMap.get(projectSlug) ?? projectSlug;
+          const actionCount = meeting.data["action-items"]?.length ?? 0;
+          return (
+            <a
+              href={`/projects/${projectSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{meeting.data.title}</span>
+                </div>
+                <div class="mt-0.5 flex items-center gap-2 text-sm text-text-muted">
+                  <span>{formatDate(meeting.data.date)}</span>
+                  <span>·</span>
+                  <span>{projectName}</span>
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <span class="text-sm text-text-muted">{meeting.data.duration}m</span>
+                {actionCount > 0 && (
+                  <span class="text-sm text-text-muted">{actionCount} action{actionCount !== 1 ? "s" : ""}</span>
+                )}
+                <Badge variant={statusVariant(meeting.data.type)}>{meetingTypeLabel(meeting.data.type)}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

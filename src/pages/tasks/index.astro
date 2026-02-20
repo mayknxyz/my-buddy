@@ -1,0 +1,137 @@
+---
+/**
+ * Tasks list page.
+ * Displays all tasks with status, priority, and project filters.
+ * Sorted by status order (doing → todo → blocked → deferred → done),
+ * then priority, then due date. Links to parent project.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { statusVariant, formatRelativeDate, priorityLabel, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const statusFilter = Astro.url.searchParams.get("status");
+const priorityFilter = Astro.url.searchParams.get("priority");
+const projectFilter = Astro.url.searchParams.get("project");
+
+const [allTasks, allProjects, allTeam] = await Promise.all([
+  getCollection("tasks").catch(() => []),
+  getCollection("projects").catch(() => []),
+  getCollection("team").catch(() => []),
+]);
+
+// Resolve project names for display and filter dropdown
+const projectNameMap = new Map<string, string>();
+for (const p of allProjects) {
+  const slug = clientSlugFromId(p.id);
+  projectNameMap.set(slug, p.data.title);
+}
+
+// Resolve team member names
+const teamNameMap = new Map<string, string>();
+for (const m of allTeam) {
+  teamNameMap.set(m.id, m.data.name);
+}
+
+// Apply filters
+let tasks = allTasks;
+if (statusFilter) tasks = tasks.filter((t) => t.data.status === statusFilter);
+if (priorityFilter) tasks = tasks.filter((t) => t.data.priority === priorityFilter);
+if (projectFilter) tasks = tasks.filter((t) => t.id.startsWith(`${projectFilter}/`));
+
+// Sort: status order, then priority, then due date
+const statusOrder: Record<string, number> = { doing: 0, todo: 1, blocked: 2, deferred: 3, done: 4 };
+const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+tasks = tasks.sort((a, b) => {
+  const statusDiff = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
+  if (statusDiff !== 0) return statusDiff;
+  const priDiff = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
+  if (priDiff !== 0) return priDiff;
+  // Tasks with due dates first, sorted ascending
+  const aDue = a.data.due ? new Date(a.data.due).getTime() : Number.MAX_SAFE_INTEGER;
+  const bDue = b.data.due ? new Date(b.data.due).getTime() : Number.MAX_SAFE_INTEGER;
+  return aDue - bDue;
+});
+
+const statusOptions = [
+  { value: "todo", label: "To Do" },
+  { value: "doing", label: "Doing" },
+  { value: "done", label: "Done" },
+  { value: "blocked", label: "Blocked" },
+  { value: "deferred", label: "Deferred" },
+];
+
+const priorityOptions = [
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
+
+// WHY: Build project options dynamically from actual projects
+const projectOptions = Array.from(projectNameMap.entries())
+  .sort((a, b) => a[1].localeCompare(b[1]))
+  .map(([value, label]) => ({ value, label }));
+---
+
+<BaseLayout title="Tasks — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Tasks" count={tasks.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Tasks" }]}>
+      <FilterBar>
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+        <FilterSelect name="priority" label="Priority" options={priorityOptions} selected={priorityFilter ?? undefined} />
+        <FilterSelect name="project" label="Project" options={projectOptions} selected={projectFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {tasks.length === 0 ? (
+      <EmptyState title="No tasks found" description={statusFilter || priorityFilter || projectFilter ? "Try changing the filters." : "Add your first task to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {tasks.map((task) => {
+          const projectSlug = task.id.split("/")[0];
+          const projectName = projectNameMap.get(projectSlug) ?? projectSlug;
+          const assigneeName = task.data.assignee ? (teamNameMap.get(task.data.assignee) ?? task.data.assignee) : undefined;
+          const isOverdue = task.data.due && new Date(task.data.due) < new Date() && task.data.status !== "done";
+          return (
+            <a
+              href={`/projects/${projectSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                    task.data.priority === "high" ? "bg-danger" :
+                    task.data.priority === "medium" ? "bg-warning" : "bg-info"
+                  }`} />
+                  <span class="font-medium">{task.data.title}</span>
+                </div>
+                <div class="mt-0.5 flex items-center gap-2 pl-4 text-sm text-text-muted">
+                  <span>{projectName}</span>
+                  {assigneeName && (
+                    <>
+                      <span>·</span>
+                      <span>{assigneeName}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                {task.data.due && (
+                  <span class={`text-sm ${isOverdue ? "text-danger font-medium" : "text-text-muted"}`}>
+                    {formatRelativeDate(task.data.due)}
+                  </span>
+                )}
+                <Badge variant={statusVariant(task.data.status)}>{task.data.status}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

@@ -1,0 +1,287 @@
+---
+/**
+ * Project detail page.
+ * Hub showing tasks, meetings, timelog, invoices, client link, budget,
+ * and rendered markdown body from getProjectWithRelations().
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { getProjectWithRelations, getProjectBillableHours } from "@/lib/relations";
+import {
+  statusVariant,
+  formatDate,
+  formatRelativeDate,
+  formatCurrency,
+  clientSlugFromId,
+  meetingTypeLabel,
+  priorityLabel,
+} from "@/lib/format";
+import { getCollection, render } from "astro:content";
+
+export async function getStaticPaths() {
+  const projects = await getCollection("projects").catch(() => []);
+  return projects.map((p) => ({
+    params: { slug: clientSlugFromId(p.id) },
+  }));
+}
+
+const { slug } = Astro.params;
+const [data, hours] = await Promise.all([
+  getProjectWithRelations(slug!),
+  getProjectBillableHours(slug!),
+]);
+
+if (!data.project) {
+  return Astro.redirect("/projects");
+}
+
+const project = data.project;
+const { Content } = await render(project as any);
+
+// Group tasks by status with defined order
+const taskStatusOrder = ["doing", "todo", "blocked", "deferred", "done"];
+const tasksByStatus = new Map<string, typeof data.tasks>();
+for (const status of taskStatusOrder) {
+  tasksByStatus.set(status, []);
+}
+for (const task of data.tasks) {
+  const status = (task as any).data.status;
+  const group = tasksByStatus.get(status);
+  if (group) group.push(task);
+  else tasksByStatus.set(status, [task]);
+}
+
+// Sort meetings by date descending
+const meetings = data.meetings.sort(
+  (a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Sort timelog by date descending
+const recentTimelog = data.timelog
+  .sort((a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 10);
+
+// Sort invoices by date descending
+const invoices = data.invoices.sort(
+  (a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Resolve team member names
+const allTeam = await getCollection("team").catch(() => []);
+const teamNameMap = new Map<string, string>();
+for (const m of allTeam) {
+  teamNameMap.set(m.id, m.data.name);
+}
+---
+
+<BaseLayout title={`${project.data.title} — Projects`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title={project.data.title}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Projects", href: "/projects" },
+        { label: project.data.title },
+      ]}
+    >
+      <div class="flex items-center gap-2">
+        <Badge variant={statusVariant(project.data.priority)}>{priorityLabel(project.data.priority)}</Badge>
+        <Badge variant={statusVariant(project.data.status)}>{project.data.status}</Badge>
+      </div>
+    </PageHeader>
+
+    {/* Info row */}
+    <div class="mb-8 flex flex-wrap gap-6 text-sm text-text-secondary">
+      {data.client && (
+        <div>
+          <span class="text-text-muted">Client:</span>{" "}
+          <a href={`/clients/${clientSlugFromId(data.client.id)}`} class="text-[var(--color-accent)] hover:underline">
+            {(data.client as any).data.name}
+          </a>
+        </div>
+      )}
+      {project.data.start && (
+        <div>
+          <span class="text-text-muted">Start:</span> {formatDate(project.data.start)}
+        </div>
+      )}
+      {project.data.end && (
+        <div>
+          <span class="text-text-muted">End:</span> {formatDate(project.data.end)}
+        </div>
+      )}
+      {project.data.budget > 0 && (
+        <div>
+          <span class="text-text-muted">Budget:</span>{" "}
+          <span class="tabular-nums">{formatCurrency(project.data.budget)}</span>
+        </div>
+      )}
+      {project.data.stack.length > 0 && (
+        <div class="flex items-center gap-1">
+          <span class="text-text-muted">Stack:</span>
+          {project.data.stack.map((tag) => (
+            <span class="rounded bg-surface-2 px-1.5 py-0.5 text-xs">{tag}</span>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <div class="space-y-8">
+      {/* Tasks — grouped by status */}
+      {data.tasks.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Tasks <span class="text-sm font-normal text-text-muted">({data.tasks.length})</span></h2>
+          <div class="space-y-4">
+            {taskStatusOrder.map((status) => {
+              const tasks = tasksByStatus.get(status) ?? [];
+              if (tasks.length === 0) return null;
+              return (
+                <div>
+                  <h3 class="mb-1 flex items-center gap-2 text-sm font-medium text-text-muted">
+                    <Badge variant={statusVariant(status)}>{status}</Badge>
+                    <span>{tasks.length}</span>
+                  </h3>
+                  <div class="space-y-1">
+                    {tasks.map((task: any) => {
+                      const isOverdue = task.data.due && new Date(task.data.due) < new Date() && task.data.status !== "done";
+                      return (
+                        <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-2 hover:border-border hover:bg-surface-1">
+                          <div class="flex items-center gap-2">
+                            <span class={`inline-block h-2 w-2 rounded-full ${
+                              task.data.priority === "high" ? "bg-danger" :
+                              task.data.priority === "medium" ? "bg-warning" : "bg-info"
+                            }`} />
+                            <span class="font-medium">{task.data.title}</span>
+                            {task.data.assignee && (
+                              <span class="text-sm text-text-muted">{teamNameMap.get(task.data.assignee) ?? task.data.assignee}</span>
+                            )}
+                          </div>
+                          {task.data.due && (
+                            <span class={`text-sm ${isOverdue ? "text-danger font-medium" : "text-text-muted"}`}>
+                              {formatRelativeDate(task.data.due)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Meetings */}
+      {meetings.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Meetings <span class="text-sm font-normal text-text-muted">({meetings.length})</span></h2>
+          <div class="space-y-1">
+            {meetings.map((meeting: any) => {
+              const actionCount = meeting.data["action-items"]?.length ?? 0;
+              return (
+                <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                  <div>
+                    <span class="font-medium">{meeting.data.title}</span>
+                    <span class="ml-2 text-sm text-text-muted">{formatDate(meeting.data.date)}</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-text-muted">{meeting.data.duration}m</span>
+                    {actionCount > 0 && (
+                      <span class="text-sm text-text-muted">{actionCount} action{actionCount !== 1 ? "s" : ""}</span>
+                    )}
+                    <Badge variant={statusVariant(meeting.data.type)}>{meetingTypeLabel(meeting.data.type)}</Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Time Summary */}
+      {(hours.total > 0 || recentTimelog.length > 0) && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Time</h2>
+          <div class="mb-4 flex gap-4">
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class="text-2xl font-bold tabular-nums">{hours.billable.toFixed(1)}h</div>
+              <div class="text-sm text-text-muted">Billable</div>
+            </div>
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class="text-2xl font-bold tabular-nums">{hours.nonBillable.toFixed(1)}h</div>
+              <div class="text-sm text-text-muted">Non-billable</div>
+            </div>
+            <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+              <div class="text-2xl font-bold tabular-nums">{hours.total.toFixed(1)}h</div>
+              <div class="text-sm text-text-muted">Total</div>
+            </div>
+          </div>
+          {recentTimelog.length > 0 && (
+            <div class="space-y-1">
+              {recentTimelog.map((entry: any) => (
+                <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-2 hover:border-border hover:bg-surface-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-text-muted">{formatDate(entry.data.date)}</span>
+                    <span>{entry.data.description || "No description"}</span>
+                    {entry.data.member && (
+                      <span class="text-sm text-text-muted">{teamNameMap.get(entry.data.member) ?? entry.data.member}</span>
+                    )}
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="font-medium tabular-nums">{entry.data.hours}h</span>
+                    <Badge variant={entry.data.billable ? "success" : "neutral"}>
+                      {entry.data.billable ? "billable" : "non-billable"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Invoices */}
+      {invoices.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Invoices</h2>
+          <div class="space-y-1">
+            {invoices.map((inv: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                <div>
+                  <span class="font-medium">{inv.data.id}</span>
+                  <span class="ml-2 text-sm text-text-muted">{formatDate(inv.data.date)}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="font-medium tabular-nums">{formatCurrency(inv.data.amount)}</span>
+                  <Badge variant={statusVariant(inv.data.status)}>{inv.data.status}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Client link */}
+      {data.client && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Client</h2>
+          <a
+            href={`/clients/${clientSlugFromId(data.client.id)}`}
+            data-navigable
+            class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+          >
+            <span class="font-medium">{(data.client as any).data.name}</span>
+            <Badge variant={statusVariant((data.client as any).data.status)}>{(data.client as any).data.status}</Badge>
+          </a>
+        </section>
+      )}
+
+      {/* Markdown body */}
+      <section class="prose prose-sm max-w-none">
+        <Content />
+      </section>
+    </div>
+  </main>
+</BaseLayout>
