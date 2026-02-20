@@ -4,7 +4,7 @@
   "version": "0.3.0",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
+    "dev:local": "astro dev",
     "build": "bun run build:wiki-index && astro build && pagefind --site dist",
     "build:wiki-index": "bun src/plugins/wiki-links/build-index.ts",
     "preview": "astro preview",

@@ -22,6 +22,7 @@ const CHORD_ROUTES: Record<string, string> = {
 	k: "/knowledge",
 	j: "/journal",
 	a: "/assets",
+	e: "/interactions",
 };
 
 /** Get all navigable items on the page. */

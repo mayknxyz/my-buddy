@@ -6,6 +6,7 @@
 import BaseLayout from "@/components/templates/BaseLayout.astro";
 import DashboardWidget from "@/components/molecules/DashboardWidget.astro";
 import { loadConfig } from "@/lib/config";
+import { formatCurrency } from "@/lib/format";
 import { getCollection } from "astro:content";
 import { getInvoiceSummary, getExpiringAssets, getOpportunityPipeline } from "@/lib/relations";
 
@@ -82,16 +83,6 @@ const timeThisWeek = allTimelog
   .filter((t) => new Date(t.data.date) >= weekStart)
   .reduce((sum, t) => sum + t.data.hours, 0);
 
-/**
- * Format currency for display.
- */
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
 ---
 
 <BaseLayout title={`${config.instance.name} — Dashboard`}>
@@ -172,7 +163,7 @@ function formatCurrency(amount: number): string {
         )}
       </DashboardWidget>
 
-      <DashboardWidget title="Recent Interactions" value={recentInteractions.length}>
+      <DashboardWidget title="Recent Interactions" value={recentInteractions.length} href="/interactions">
         {recentInteractions.length > 0 ? (
           <ul class="space-y-0.5">
             {recentInteractions.slice(0, 3).map((i) => (

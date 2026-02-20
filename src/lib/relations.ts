@@ -120,7 +120,8 @@ export async function getProjectWithRelations(slug: string): Promise<ProjectWith
 		safeGetCollection<Entry>("knowledgeProjects"),
 	]);
 
-	const project = projects.find((p: any) => p.id === `${slug}/index`);
+	// LEARN: Astro 5 glob loader strips "index" from IDs — index.md → just the folder slug
+	const project = projects.find((p: any) => p.id === slug);
 	const clientSlug = (project as any)?.data?.client;
 
 	return {
@@ -131,7 +132,7 @@ export async function getProjectWithRelations(slug: string): Promise<ProjectWith
 		files: allFiles.filter((f: any) => f.id.startsWith(`${slug}/`)),
 		invoices: allInvoices.filter((i: any) => i.data.project === slug),
 		client: clientSlug
-			? allClients.find((c: any) => c.id === `${clientSlug}/index`)
+			? allClients.find((c: any) => c.id === clientSlug)
 			: undefined,
 		contacts: allContacts.filter((c: any) => c.data.projects?.includes(slug)),
 		interactions: allInteractions.filter((i: any) => i.data.project === slug),
@@ -161,7 +162,7 @@ export async function getClientWithRelations(slug: string): Promise<ClientWithRe
 		]);
 
 	return {
-		client: allClients.find((c: any) => c.id === `${slug}/index`),
+		client: allClients.find((c: any) => c.id === slug),
 		projects: allProjects.filter((p: any) => p.data.client === slug),
 		contacts: allContacts.filter((c: any) => c.id.startsWith(`${slug}/`)),
 		contracts: allContracts.filter((c: any) => c.id.startsWith(`${slug}/`)),
@@ -334,14 +335,15 @@ export async function getContactWithRelations(slug: string): Promise<ContactWith
 		safeGetCollection<Entry>("interactions"),
 	]);
 
-	const contact = allContacts.find((c: any) => c.id.endsWith(`/${slug}`) || c.id === slug);
+	// WHY: Contact slug may be full ID "acme-corp/john-doe" or just "john-doe"
+	const contact = allContacts.find((c: any) => c.id === slug || c.id.endsWith(`/${slug}`));
 	const clientSlug = (contact as any)?.data?.client;
 	const projectSlugs: string[] = (contact as any)?.data?.projects ?? [];
 
 	return {
 		contact,
-		client: clientSlug ? allClients.find((c: any) => c.id === `${clientSlug}/index`) : undefined,
-		projects: allProjects.filter((p: any) => projectSlugs.includes(p.data.client) || projectSlugs.some((ps: string) => p.id === `${ps}/index`)),
+		client: clientSlug ? allClients.find((c: any) => c.id === clientSlug) : undefined,
+		projects: allProjects.filter((p: any) => projectSlugs.includes(p.data.client) || projectSlugs.some((ps: string) => p.id === ps)),
 		interactions: allInteractions.filter((i: any) => i.data.contact === slug),
 	};
 }

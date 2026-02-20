@@ -1,0 +1,80 @@
+---
+/**
+ * Lead detail page.
+ * Minimal detail: name, status, source, notes, related opportunity link.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { statusVariant, sourceLabel, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+import { render } from "astro:content";
+
+export async function getStaticPaths() {
+  const leads = await getCollection("leads").catch(() => []);
+  return leads.map((l) => ({
+    params: { slug: clientSlugFromId(l.id) },
+  }));
+}
+
+const { slug } = Astro.params;
+const allLeads = await getCollection("leads").catch(() => []);
+const lead = allLeads.find((l) => l.id === slug);
+
+if (!lead) {
+  return Astro.redirect("/leads");
+}
+
+const { Content } = await render(lead as any);
+
+// Find related opportunity
+const allOpportunities = await getCollection("opportunities").catch(() => []);
+const relatedOpp = allOpportunities.find((o) => o.data.lead === slug);
+---
+
+<BaseLayout title={`${lead.data.name} — Leads`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title={lead.data.name}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Leads", href: "/leads" },
+        { label: lead.data.name },
+      ]}
+    >
+      <Badge variant={statusVariant(lead.data.status)}>{lead.data.status}</Badge>
+    </PageHeader>
+
+    <div class="mb-8 flex flex-wrap gap-6 text-sm">
+      <div>
+        <span class="text-text-muted">Source:</span>{" "}
+        <Badge variant={statusVariant(lead.data.source)}>{sourceLabel(lead.data.source)}</Badge>
+      </div>
+      {lead.data.notes && (
+        <div>
+          <span class="text-text-muted">Notes:</span>{" "}
+          <span class="text-text-secondary">{lead.data.notes}</span>
+        </div>
+      )}
+    </div>
+
+    <div class="space-y-8">
+      {relatedOpp && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Related Opportunity</h2>
+          <a
+            href={`/opportunities/${clientSlugFromId(relatedOpp.id)}`}
+            class="flex items-center justify-between rounded-lg border border-border bg-surface-1 px-4 py-3 hover:bg-surface-2"
+          >
+            <span class="font-medium">{relatedOpp.data.title}</span>
+            <Badge variant={statusVariant(relatedOpp.data.stage)}>{relatedOpp.data.stage}</Badge>
+          </a>
+        </section>
+      )}
+
+      <section class="prose prose-sm max-w-none">
+        <Content />
+      </section>
+    </div>
+  </main>
+</BaseLayout>

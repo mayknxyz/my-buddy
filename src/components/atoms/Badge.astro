@@ -1,0 +1,25 @@
+---
+/**
+ * Status/type badge with color variants.
+ * Uses oklch alpha for translucent backgrounds on dark surfaces.
+ */
+interface Props {
+  variant?: "success" | "warning" | "danger" | "info" | "neutral" | "accent";
+  class?: string;
+}
+
+const { variant = "neutral", class: className } = Astro.props;
+
+const variantClasses: Record<string, string> = {
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  danger: "bg-danger/15 text-danger",
+  info: "bg-info/15 text-info",
+  neutral: "bg-surface-3/50 text-text-secondary",
+  accent: "bg-[var(--color-accent-subtle)] text-[var(--color-accent)]",
+};
+---
+
+<span class:list={["inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", variantClasses[variant], className]}>
+  <slot />
+</span>

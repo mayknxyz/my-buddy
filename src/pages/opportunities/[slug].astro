@@ -1,0 +1,108 @@
+---
+/**
+ * Opportunity detail page.
+ * Minimal detail: title, stage, value, probability, expected close,
+ * links to lead, contact, and proposal.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { statusVariant, stageLabel, formatCurrency, formatDate, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+import { render } from "astro:content";
+
+export async function getStaticPaths() {
+  const opportunities = await getCollection("opportunities").catch(() => []);
+  return opportunities.map((o) => ({
+    params: { slug: clientSlugFromId(o.id) },
+  }));
+}
+
+const { slug } = Astro.params;
+const allOpps = await getCollection("opportunities").catch(() => []);
+const opp = allOpps.find((o) => o.id === slug);
+
+if (!opp) {
+  return Astro.redirect("/opportunities");
+}
+
+const { Content } = await render(opp as any);
+
+// Resolve linked entities
+const allLeads = await getCollection("leads").catch(() => []);
+const linkedLead = allLeads.find((l) => clientSlugFromId(l.id) === opp.data.lead);
+
+const allContacts = await getCollection("contacts").catch(() => []);
+const linkedContact = opp.data.contact
+  ? allContacts.find((c) => c.id.endsWith(`/${opp.data.contact}`) || c.id === opp.data.contact)
+  : null;
+---
+
+<BaseLayout title={`${opp.data.title} — Opportunities`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title={opp.data.title}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Opportunities", href: "/opportunities" },
+        { label: opp.data.title },
+      ]}
+    >
+      <Badge variant={statusVariant(opp.data.stage)}>{stageLabel(opp.data.stage)}</Badge>
+    </PageHeader>
+
+    <div class="mb-8 flex flex-wrap gap-6 text-sm">
+      <div>
+        <span class="text-text-muted">Value:</span>{" "}
+        <span class="font-medium tabular-nums">{formatCurrency(opp.data.value)}</span>
+      </div>
+      <div>
+        <span class="text-text-muted">Probability:</span>{" "}
+        <span class="font-medium">{opp.data.probability}%</span>
+      </div>
+      {opp.data["expected-close"] && (
+        <div>
+          <span class="text-text-muted">Expected Close:</span>{" "}
+          <span class="text-text-secondary">{formatDate(opp.data["expected-close"])}</span>
+        </div>
+      )}
+      <div>
+        <span class="text-text-muted">Weighted:</span>{" "}
+        <span class="font-medium text-[var(--color-accent)] tabular-nums">
+          {formatCurrency(opp.data.value * opp.data.probability / 100)}
+        </span>
+      </div>
+    </div>
+
+    <div class="space-y-8">
+      {/* Links */}
+      <section class="flex flex-wrap gap-4">
+        {linkedLead && (
+          <a
+            href={`/leads/${clientSlugFromId(linkedLead.id)}`}
+            class="rounded-lg border border-border bg-surface-1 px-4 py-3 hover:bg-surface-2"
+          >
+            <span class="text-xs text-text-muted">Lead</span>
+            <div class="font-medium">{linkedLead.data.name}</div>
+          </a>
+        )}
+        {linkedContact && (
+          <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+            <span class="text-xs text-text-muted">Contact</span>
+            <div class="font-medium">{(linkedContact as any).data.name}</div>
+          </div>
+        )}
+        {opp.data.proposal && (
+          <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+            <span class="text-xs text-text-muted">Proposal</span>
+            <div class="font-medium">{opp.data.proposal}</div>
+          </div>
+        )}
+      </section>
+
+      <section class="prose prose-sm max-w-none">
+        <Content />
+      </section>
+    </div>
+  </main>
+</BaseLayout>

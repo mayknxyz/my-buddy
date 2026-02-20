@@ -1,0 +1,29 @@
+---
+/**
+ * Horizontal filter bar wrapping slotted FilterSelect components.
+ * Client-side script attaches change listeners that rebuild URL params.
+ */
+---
+
+<div class="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-surface-1 px-4 py-3">
+  <slot />
+</div>
+
+<script>
+  // WHY: Each FilterSelect dispatches change events. We rebuild the URL
+  // with all current filter values and navigate — server-side filtering.
+  const selects = document.querySelectorAll<HTMLSelectElement>("[data-filter-select]");
+  for (const select of selects) {
+    select.addEventListener("change", () => {
+      const url = new URL(window.location.href);
+      for (const s of selects) {
+        if (s.value) {
+          url.searchParams.set(s.name, s.value);
+        } else {
+          url.searchParams.delete(s.name);
+        }
+      }
+      window.location.href = url.toString();
+    });
+  }
+</script>

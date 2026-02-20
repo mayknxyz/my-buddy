@@ -1,0 +1,84 @@
+---
+/**
+ * Leads list page.
+ * Displays all leads with status and source filters.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { statusVariant, sourceLabel, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const statusFilter = Astro.url.searchParams.get("status");
+const sourceFilter = Astro.url.searchParams.get("source");
+
+const allLeads = await getCollection("leads").catch(() => []);
+
+let leads = allLeads;
+if (statusFilter) leads = leads.filter((l) => l.data.status === statusFilter);
+if (sourceFilter) leads = leads.filter((l) => l.data.source === sourceFilter);
+
+// Sort: active statuses first (new, contacted, qualified), then disqualified
+const statusOrder: Record<string, number> = { new: 0, contacted: 1, qualified: 2, disqualified: 3 };
+leads = leads.sort((a, b) => {
+  const orderDiff = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
+  if (orderDiff !== 0) return orderDiff;
+  return a.data.name.localeCompare(b.data.name);
+});
+
+const statusOptions = [
+  { value: "new", label: "New" },
+  { value: "contacted", label: "Contacted" },
+  { value: "qualified", label: "Qualified" },
+  { value: "disqualified", label: "Disqualified" },
+];
+
+const sourceOptions = [
+  { value: "referral", label: "Referral" },
+  { value: "social", label: "Social" },
+  { value: "inbound", label: "Inbound" },
+  { value: "cold", label: "Cold Outreach" },
+];
+---
+
+<BaseLayout title="Leads — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Leads" count={leads.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Leads" }]}>
+      <FilterBar>
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+        <FilterSelect name="source" label="Source" options={sourceOptions} selected={sourceFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {leads.length === 0 ? (
+      <EmptyState title="No leads found" description={statusFilter || sourceFilter ? "Try changing the filters." : "Add your first lead to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {leads.map((lead) => {
+          const slug = clientSlugFromId(lead.id);
+          return (
+            <a
+              href={`/leads/${slug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div>
+                <span class="font-medium">{lead.data.name}</span>
+                {lead.data.notes && (
+                  <span class="ml-2 text-sm text-text-muted">{lead.data.notes.slice(0, 60)}{lead.data.notes.length > 60 ? "…" : ""}</span>
+                )}
+              </div>
+              <div class="flex items-center gap-2">
+                <Badge variant={statusVariant(lead.data.source)}>{sourceLabel(lead.data.source)}</Badge>
+                <Badge variant={statusVariant(lead.data.status)}>{lead.data.status}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>
