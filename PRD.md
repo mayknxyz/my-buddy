@@ -6,7 +6,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.1.0 |
+| Version | 0.3.0 |
 | Status | Ready for Development |
 | Date | February 2026 |
 | Author | Mike Navales |
@@ -28,10 +28,11 @@
 9. [Claude Code Integration](#9-claude-code-integration)
 10. [CLI Scripts & Templates](#10-cli-scripts--templates)
 11. [Multi-Instance Architecture](#11-multi-instance-architecture)
-12. [Migration from v1](#12-migration-from-v1)
+12. [Content Data Migration](#12-content-data-migration)
 13. [Development Phases](#13-development-phases)
 14. [Platform Compatibility](#14-platform-compatibility)
-15. [Constraints & Decisions](#15-constraints--decisions)
+15. [Documentation](#15-documentation)
+16. [Constraints & Decisions](#16-constraints--decisions)
 
 ---
 
@@ -51,7 +52,7 @@ The system is designed for solo founders and small teams who want full ownership
 - Provide a clean Astro dashboard for visual management
 - Store binary files in Cloudflare R2, metadata in Git
 - Support the full business lifecycle: lead → client → project → invoice → payment
-- Preserve keyboard-first, terminal-first UX from v1
+- Keyboard-first, terminal-first UX
 - Support multiple instances for separate businesses via scaffolding CLI
 - Open-source the app while keeping business data private
 
@@ -61,7 +62,7 @@ The system is designed for solo founders and small teams who want full ownership
 - Not a mobile-first app
 - Not a real-time collaboration tool
 - No database — Markdown files are the data source of truth
-- No authentication for v1 — dashboard runs locally via `astro dev`
+- No authentication for v0.3.0 — dashboard runs locally via `astro dev`
 
 ### 1.4 Tech Stack
 
@@ -90,6 +91,8 @@ The repository is a monorepo with two primary layers: the Astro app in `src/` an
 ```
 my-buddy/
 ├── CLAUDE.md
+├── buddy.config.ts              # gitignored — instance-specific persona + R2 config
+├── buddy.config.example.ts      # tracked — reference config for new instances
 ├── buddy.instances.json
 ├── .claude/
 │   ├── settings.json
@@ -101,15 +104,34 @@ my-buddy/
 │   ├── contact.md
 │   ├── task.md
 │   ├── meeting.md
-│   ├── invoice.md
 │   ├── interaction.md
 │   ├── lead.md
 │   ├── opportunity.md
 │   ├── proposal.md
 │   ├── contract.md
+│   ├── invoice.md
+│   ├── payment.md
 │   ├── expense.md
+│   ├── budget.md
 │   ├── timelog.md
+│   ├── team.md
+│   ├── role.md
+│   ├── leave.md
+│   ├── hardware.md
+│   ├── software.md
+│   ├── domain.md
+│   ├── server.md
+│   ├── account.md
+│   ├── subscription.md
+│   ├── blog.md
+│   ├── social.md
+│   ├── newsletter.md
+│   ├── campaign.md
+│   ├── goal.md
+│   ├── idea.md
 │   ├── journal.md
+│   ├── sop.md
+│   ├── compliance.md
 │   └── kb.md
 ├── src/
 │   ├── content.config.ts
@@ -135,6 +157,11 @@ my-buddy/
 │   ├── styles/
 │   │   └── global.css
 │   └── utils/
+├── docs/
+│   ├── decisions/                # ADRs — one file per architectural decision
+│   ├── entity-relationships.md   # Mermaid diagram
+│   ├── business-lifecycle.md     # Mermaid diagram
+│   └── multi-instance.md         # Mermaid diagram
 ├── content.example/          # sample data for scaffolding + demo
 │   └── ...                   # mirrors content/ structure with fake data
 ├── content/                  # gitignored in public repo, tracked in instances
@@ -165,7 +192,7 @@ my-buddy/
 │   │   ├── domains/
 │   │   ├── servers/
 │   │   └── accounts/
-│   ├── content/
+│   ├── marketing/
 │   │   ├── blog/
 │   │   ├── social/
 │   │   └── newsletter/
@@ -231,9 +258,9 @@ Every module maps to an Astro Content Collection defined in `src/content.config.
 | assets/domains | domain slug | Domain names and expiry |
 | assets/servers | server slug | VPS and server inventory |
 | assets/accounts | account slug | Service account metadata |
-| content/blog | post slug | Blog posts pipeline |
-| content/social | post slug | Social media content per platform |
-| content/newsletter | issue slug | Newsletter issues with send metrics |
+| marketing/blog | post slug | Blog posts pipeline |
+| marketing/social | post slug | Social media content per platform |
+| marketing/newsletter | issue slug | Newsletter issues with send metrics |
 | campaigns | campaign slug | Marketing campaign groupings |
 | goals | quarter slug | OKRs per quarter |
 | ideas | idea slug | Raw ideas before becoming projects |
@@ -244,6 +271,8 @@ Every module maps to an Astro Content Collection defined in `src/content.config.
 ### 2.3 Namespace Strategy
 
 The folder name within each collection acts as the foreign key. Relationships are resolved at query time using slug prefix matching or frontmatter references. This eliminates the need for a database while keeping data queryable.
+
+**`index.md` vs flat file rule:** Entities that serve as parent namespaces for child data use `{slug}/index.md` (projects, clients, leads, opportunities, campaigns, goals, budgets, tax). Leaf entities that live under a parent namespace use flat files: `{parent-slug}/{entity-slug}.md` (contacts, tasks, invoices, payments, contracts, proposals, meetings, interactions, timelog, expenses, leave). Standalone entities with no parent use flat files at the collection root: `{slug}.md` (team, roles, subscriptions, sops, compliance, ideas, journal).
 
 - `projects/test-project/` → `tasks/test-project/`, `meetings/test-project/`, `timelog/test-project/`
 - `clients/acme-corp/` → `contacts/acme-corp/`, `invoices/acme-corp/`, `contracts/acme-corp/`
@@ -609,7 +638,7 @@ serial: XXXX
 purchased: 2023-06-01
 cost: 2500
 status: active            # active | storage | retired | sold
-assigned-to: mike
+assigned-to: [mike]
 warranty-until: 2026-06-01
 ---
 ```
@@ -778,7 +807,7 @@ tags: [shipping, sales]
 #### 3.11.1 Blog Content
 
 ```yaml
-# content/content/blog/first-post.md
+# content/marketing/blog/first-post.md
 ---
 title: First Post
 status: draft             # draft | review | scheduled | published
@@ -792,7 +821,7 @@ url: ~
 #### 3.11.2 Social Content
 
 ```yaml
-# content/content/social/linkedin-launch-announcement.md
+# content/marketing/social/linkedin-launch-announcement.md
 ---
 title: Launch Announcement
 platform: linkedin        # linkedin | twitter | bluesky | threads
@@ -808,7 +837,7 @@ url: ~
 #### 3.11.3 Newsletter Content
 
 ```yaml
-# content/content/newsletter/issue-001.md
+# content/marketing/newsletter/issue-001.md
 ---
 title: "Issue #001 — Hello World"
 status: draft             # draft | review | scheduled | sent
@@ -834,7 +863,7 @@ start: 2026-01-01
 end: 2026-03-31
 budget: 500
 channels: [blog, linkedin, newsletter]
-content: [blog/first-post]
+marketing: [blog/first-post]
 leads-generated: 0
 ---
 ```
@@ -903,9 +932,9 @@ tags: [proposal]
 | interactions | contact | contacts | Many-to-One |
 | interactions | project | projects | Many-to-One |
 | files | project/client (folder) | projects/clients | Many-to-One |
-| campaigns | content[] | content | One-to-Many |
+| campaigns | marketing[] | marketing | One-to-Many |
 | goals | projects[] | projects | Many-to-Many |
-| assets | assigned-to | team | Many-to-One |
+| assets | assigned-to[] | team | Many-to-Many |
 | leave | member (folder) | team | Many-to-One |
 | compliance | applies-to[] | projects | Many-to-Many |
 | roles | (referenced by) | team.role | One-to-Many |
@@ -1068,7 +1097,7 @@ The dashboard uses a dark theme with CSS custom properties for accent color cust
 
 ### 6.4 Component Architecture (Atomic Design)
 
-Components follow atomic design principles, matching the pattern established in v1:
+Components follow atomic design principles:
 
 | Layer | Directory | Examples |
 |---|---|---|
@@ -1092,7 +1121,7 @@ Wiki-links provide lightweight cross-referencing in Markdown content bodies usin
 | `[[collection/slug]]` | Explicit collection | `[[projects/test-project]]` |
 | `[[collection/slug\|text]]` | Explicit + custom label | `[[projects/test-project\|Test]]` |
 
-**Resolution priority** (when no collection prefix): clients > contacts > projects > tasks > leads > opportunities > kb > meetings > journals
+**Resolution priority** (when no collection prefix): clients > contacts > projects > tasks > leads > opportunities > kb > meetings > journal
 
 ### 7.2 Build Process
 
@@ -1178,7 +1207,45 @@ Astro 5, Tailwind CSS v4, Bun, Cloudflare R2, Wrangler, Biome, Pagefind
 - ./scripts/new-project.sh <project-slug> <client-slug>
 ```
 
-### 9.3 Slash Commands
+### 9.3 Instance Configuration (`buddy.config.ts`)
+
+Each instance has a `buddy.config.ts` file that configures the AI persona and instance-specific settings. This file is gitignored in the public repo and tracked in instances. A `buddy.config.example.ts` is provided as a reference.
+
+```ts
+// buddy.config.ts
+export default {
+  instance: {
+    name: "madali-buddy",
+    accent: "indigo",       // indigo | blue | emerald | amber | rose | violet
+  },
+  persona: {
+    name: "Buddy",
+    tone: "professional",   // professional | casual | concise
+    greeting: "Hey Mike, ready to get to work.",
+    boundaries: [
+      "Never modify .git/ or node_modules/",
+      "Always confirm before deleting content files",
+    ],
+  },
+  r2: {
+    bucket: "my-buddy-files",
+    publicUrl: "https://pub-xxx.r2.dev",
+  },
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `instance.name` | string | Instance identifier |
+| `instance.accent` | string | Dashboard accent color |
+| `persona.name` | string | AI persona display name |
+| `persona.tone` | string | Response tone preference |
+| `persona.greeting` | string | Session start greeting |
+| `persona.boundaries` | string[] | Rules the AI must follow |
+| `r2.bucket` | string | Cloudflare R2 bucket name |
+| `r2.publicUrl` | string | R2 public URL prefix |
+
+### 9.4 Slash Commands
 
 Slash commands live in `.claude/commands/` and provide Claude Code with structured prompts for operating on business data. Commands are organized by category.
 
@@ -1201,8 +1268,8 @@ Each collection gets five standard commands:
 | Command | Description |
 |---|---|
 | `/mybuddy.start` | Activate persona, load context |
-| `/mybuddy.end` | Deactivate persona, run backup |
-| `/mybuddy.backup` | Manual backup of content files |
+| `/mybuddy.end` | Deactivate persona, commit and push content |
+| `/mybuddy.backup` | Commit and push content to instance remote |
 
 #### Daily Operations
 
@@ -1362,10 +1429,11 @@ bun sync
 | Synced (app code) | Not synced (instance-specific) |
 |---|---|
 | `src/` | `content/` |
-| `scripts/` | `buddy.instances.json` |
-| `.templates/` | `.git/` |
-| `.claude/commands/` | `node_modules/` |
-| `astro.config.mjs` | Instance-specific config |
+| `scripts/` | `buddy.config.ts` |
+| `.templates/` | `buddy.instances.json` |
+| `.claude/commands/` | `.git/` |
+| `docs/` | `node_modules/` |
+| `astro.config.mjs` | |
 | `src/content.config.ts` | |
 | `src/styles/` | |
 | `package.json` | |
@@ -1386,15 +1454,17 @@ After sync, each instance runs `bun install` if `package.json` changed.
 
 ### 11.7 Future Consideration: Meta-Dashboard
 
-A meta-dashboard that aggregates data across all instances (total revenue, all tasks, cross-business overview) is a potential future feature but is **not in scope for v0.1.0**. Each instance has its own Astro dashboard. Cross-instance visibility can be explored once the core system is stable.
+A meta-dashboard that aggregates data across all instances (total revenue, all tasks, cross-business overview) is a potential future feature but is **not in scope for v0.3.0**. Each instance has its own Astro dashboard. Cross-instance visibility can be explored once the core system is stable.
 
 ---
 
-## 12. Migration from v1
+## 12. Content Data Migration
+
+This section covers migrating **content data** (Markdown files with business data) from v1's flat structure to v2's folder-namespaced structure. The v1 application code has been scrapped entirely — only the content data in existing instances needs conversion.
 
 ### 12.1 Data Mapping
 
-v1 (`~/my-buddy`) content maps to v2 as follows:
+v1 instance content maps to v2 as follows:
 
 | v1 Collection | v1 Count | v2 Collection | Migration Notes |
 |---|---|---|---|
@@ -1420,13 +1490,15 @@ v1 (`~/my-buddy`) content maps to v2 as follows:
 
 ### 12.3 Migration Script
 
-`scripts/migrate-v1.sh` automates the conversion:
+`scripts/migrate-v1.sh` automates the content data conversion:
 
-1. Read v1 content from `~/my-buddy/src/content/`
-2. Transform frontmatter fields (rename, restructure)
-3. Create folder namespaces (e.g., `tasks/project-slug/`)
-4. Write to v2 `content/` directory
-5. Report: migrated count, skipped, errors
+1. Read v1 content from the instance's `src/content/` directory
+2. Transform frontmatter fields (rename `uid` → slug, `underscore_case` → `kebab-case`)
+3. Split `accounts` into `clients/` and `leads/` based on `type` field
+4. Rename `deals/` → `opportunities/`
+5. Create folder namespaces (e.g., `tasks/{project-slug}/`)
+6. Write to v2 `content/` directory
+7. Report: migrated count, skipped, errors
 
 ---
 
@@ -1441,7 +1513,7 @@ v1 (`~/my-buddy`) content maps to v2 as follows:
 | Phase 5 — Assets & Subs | assets (all types), subscriptions, compliance | Medium |
 | Phase 6 — Knowledge Base | knowledge (all layers), sops, files, Pagefind search | Medium |
 | Phase 7 — Team & HR | team, roles, leave | Medium |
-| Phase 8 — Strategic | goals, ideas, journal, campaigns, content (blog, social, newsletter) | Lower |
+| Phase 8 — Strategic | goals, ideas, journal, campaigns, marketing (blog, social, newsletter) | Lower |
 | Phase 9 — R2 Integration | upload scripts, file metadata, wrangler config | Parallel with Phase 4 |
 | Phase 10 — Dashboard | All routes, widgets, relation queries, expiry alerts | Ongoing |
 | Phase 11 — Claude Code Commands | CRUD commands, session commands, daily ops, reporting | Parallel with Phases 2–8 |
@@ -1459,7 +1531,7 @@ my-buddy is platform-agnostic by design. The system is built on Markdown files, 
 | Layer | Technology | Compatible With |
 |---|---|---|
 | Content editing | Markdown files | VS Code, Neovim, Obsidian, any text editor |
-| Dashboard | Astro static site | Any browser (local dev server for v1) |
+| Dashboard | Astro static site | Any browser (local dev server for v0.3.0) |
 | Version control | Git | GitHub, GitLab, Gitea, any git host |
 | File uploads | Wrangler CLI | Any terminal on any OS |
 | Scripts | Bash | Any Unix-compatible terminal |
@@ -1467,9 +1539,9 @@ my-buddy is platform-agnostic by design. The system is built on Markdown files, 
 
 ### 14.2 Deployment
 
-For v0.1.0, the dashboard runs locally via `astro dev` with hot reload. No authentication needed — it's localhost only.
+For v0.3.0, the dashboard runs locally via `astro dev` with hot reload. No authentication needed — it's localhost only.
 
-**Future deployment options (not in scope for v0.1.0):**
+**Future deployment options (not in scope for v0.3.0):**
 
 - **Cloudflare Pages** — static build deployed on push via GitHub Actions
 - **Cloudflare Access** — zero-trust auth (free for up to 50 users) if team access is needed
@@ -1500,7 +1572,103 @@ The repo is the product, not the AI tool. Any editor or AI agent that can read f
 
 ---
 
-## 15. Constraints & Decisions
+## 15. Documentation
+
+This project doubles as a learning resource. Documentation is layered — each layer serves a different purpose and can be maintained independently.
+
+### 15.1 Architecture Decision Records (ADRs)
+
+A `docs/decisions/` folder with one file per major decision. ADRs capture the *why* behind choices — the context that's easy to forget months later.
+
+```
+docs/decisions/
+├── 001-flat-file-over-database.md
+├── 002-folder-namespace-strategy.md
+├── 003-wiki-links-over-explicit-refs.md
+├── 004-marketing-not-content-content.md
+└── ...
+```
+
+Each ADR is 20–50 lines and follows this structure: context, decision, alternatives considered, tradeoffs.
+
+### 15.2 CLAUDE.md as Living Module Docs
+
+CLAUDE.md files at the repo root and within each project/client folder serve as both AI context and module documentation. They describe conventions, gotchas, and current state. They stay maintained because they're functional — Claude Code reads them — not just decorative.
+
+### 15.3 Code Comments
+
+Comments follow a three-tier convention adapted for TypeScript and Astro.
+
+**1. Module comments — one per file, describes purpose and scope**
+
+```ts
+// relations.ts
+// Resolves cross-collection references for dashboard pages.
+// Every relation query lives here — pages import from this
+// module instead of writing inline collection lookups.
+```
+
+```ts
+// remark-plugin.ts
+// Remark plugin that transforms [[wiki-link]] syntax into
+// HTML anchor elements at build time, using the pre-built
+// slug index for resolution.
+```
+
+**2. TSDoc — on every exported function and type, explains what and when**
+
+```ts
+/** Strips a slug down for dedup comparison:
+ *  lowercase, remove punctuation, collapse whitespace. */
+export function normalizeSlug(raw: string): string {
+```
+
+```ts
+/** Fetches a project and all related collections
+ *  (tasks, meetings, client, invoices, timelog, etc.)
+ *  in a single call. Used by project detail pages. */
+export async function getProjectWithRelations(slug: string) {
+```
+
+**3. Inline comments — two kinds, prefixed for intent**
+
+```ts
+// WHY: Resolution priority favors clients over projects because
+// client slugs are more likely to be unique — project slugs like
+// "website-redesign" are common across clients.
+const priority = ['clients', 'contacts', 'projects', 'tasks']
+
+// LEARN: Astro's getCollection() returns entries sorted by file path.
+// Filtering by slug prefix works because folder-namespaced children
+// share the parent slug as their path prefix.
+const tasks = allTasks.filter(t => t.slug.startsWith(`${slug}/`))
+```
+
+The `WHY` prefix marks design rationale — why this approach over alternatives. The `LEARN` prefix marks framework behavior, library idioms, or patterns being learned — these can be stripped later once they're second nature.
+
+**What not to comment:**
+
+- Self-explanatory code (`const name = entry.data.name`)
+- Every function parameter (TSDoc covers the function, types cover the params)
+- Removed code (delete it, git has history)
+
+### 15.4 Diagrams
+
+Three Mermaid diagrams in `docs/` cover the core architecture. Mermaid renders natively on GitHub with no tooling.
+
+| Diagram | File | Purpose |
+|---|---|---|
+| Entity relationships | `docs/entity-relationships.md` | Visual version of the Section 4.1 relationship map |
+| Business lifecycle | `docs/business-lifecycle.md` | Lead → opportunity → client → project → invoice → payment flow |
+| Multi-instance architecture | `docs/multi-instance.md` | Public repo → sync → private instances |
+
+### 15.5 README.md
+
+The entry point for new users and contributors. Covers getting started, architecture overview at a glance, and links to the PRD, ADRs, and diagrams.
+
+---
+
+## 16. Constraints & Decisions
 
 | Decision | Rationale |
 |---|---|
@@ -1512,22 +1680,22 @@ The repo is the product, not the AI tool. Any editor or AI agent that can read f
 | Folder-based namespacing | Prevents slug collisions across projects without a global ID system |
 | No real-time features | Static generation is sufficient; data changes via `astro dev` hot reload or git commit + rebuild |
 | CLAUDE.md per project | Enables Claude Code to operate with full project context without manual prompting |
-| Bun + Biome | Fast runtime, consistent with v1, no node_modules bloat |
+| Bun + Biome | Fast runtime, no node_modules bloat |
 | Tasks under project folders | Duplicate task names across projects resolved by path — no UUID needed |
 | Wiki-links via remark plugin | Lightweight cross-referencing without database joins, backlinks auto-generated at build time |
 | Pagefind for search | Zero-config static search, no server infrastructure, built for Astro |
-| Atomic design components | Scalable, maintainable UI pattern proven in v1 |
+| Atomic design components | Scalable, maintainable UI pattern |
 | Dark theme default | Terminal-first audience prefers dark UI, configurable accent color |
 | Kebab-case frontmatter fields | Consistent with slug convention, readable in YAML |
-| Local dev server only (v0.1.0) | No auth complexity — deploy to Cloudflare Pages + Access later if needed |
+| Local dev server only (v0.3.0) | No auth complexity — deploy to Cloudflare Pages + Access later if needed |
 | One-way Obsidian sync | Avoids merge conflicts — Obsidian reads knowledge base, edits happen in repo |
 | Individual recurring meeting files | Flat-file simplicity — no recurrence engine, link via `recurring-id` |
 | Templates in `.templates/` | Single source of truth for content scaffolding, used by CLI scripts and Claude Code commands |
 | Public repo + private instances | Open-source app code with issues/PRs on public repo; real business data in private instance repos — one per business |
 | Hub-based sync (not per-instance upstream) | Local clone of public repo distributes updates to instances via rsync — no git remote entanglement in instances |
 | `content.example/` for scaffolding | Sample data in public repo serves as demo and scaffolding source; renamed to `content/` in instances |
-| CLI-only instance management (v0.1.0) | Meta-dashboard across instances is a future consideration — each instance has its own Astro dashboard |
+| CLI-only instance management (v0.3.0) | Meta-dashboard across instances is a future consideration — each instance has its own Astro dashboard |
 
 ---
 
-*my-buddy PRD — v0.1.0 — February 2026 — Mike Navales, Madali LLC*
+*my-buddy PRD — v0.3.0 — February 2026 — Mike Navales, Madali LLC*
