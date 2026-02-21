@@ -1,0 +1,26 @@
+---
+/**
+ * Breadcrumb navigation with / separator.
+ * Last item renders as plain text (current page).
+ */
+interface Props {
+  items: { label: string; href?: string }[];
+}
+
+const { items } = Astro.props;
+---
+
+<nav aria-label="Breadcrumb" class="mb-4 text-sm text-text-muted">
+  <ol class="flex items-center gap-1.5">
+    {items.map((item, i) => (
+      <li class="flex items-center gap-1.5">
+        {i > 0 && <span aria-hidden="true">/</span>}
+        {item.href ? (
+          <a href={item.href} class="hover:text-text-primary">{item.label}</a>
+        ) : (
+          <span class="text-text-secondary">{item.label}</span>
+        )}
+      </li>
+    ))}
+  </ol>
+</nav>

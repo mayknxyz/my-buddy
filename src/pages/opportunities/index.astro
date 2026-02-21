@@ -1,0 +1,91 @@
+---
+/**
+ * Opportunities pipeline board.
+ * Kanban-style view with 6 stage columns using getOpportunityPipeline().
+ * Uses wider layout for horizontal scrolling.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { getOpportunityPipeline } from "@/lib/relations";
+import { statusVariant, stageLabel, formatCurrency, formatDate, clientSlugFromId } from "@/lib/format";
+
+const pipeline = await getOpportunityPipeline();
+
+// Summary metrics: exclude closed stages
+const activeStages = pipeline.filter((s) => !["closed-won", "closed-lost"].includes(s.stage));
+const totalValue = activeStages.reduce((sum, s) => sum + s.totalValue, 0);
+const weightedValue = activeStages.reduce((sum, s) => {
+  return sum + s.opportunities.reduce((oSum: number, o: any) => {
+    return oSum + (o.data.value ?? 0) * ((o.data.probability ?? 0) / 100);
+  }, 0);
+}, 0);
+const totalOpps = pipeline.reduce((sum, s) => sum + s.opportunities.length, 0);
+---
+
+<BaseLayout title="Pipeline — my-buddy">
+  <main class="mx-auto max-w-full p-6">
+    <PageHeader title="Pipeline" count={totalOpps} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Opportunities" }]} />
+
+    {/* Summary bar */}
+    {totalValue > 0 && (
+      <div class="mb-6 flex flex-wrap gap-6 rounded-lg border border-border bg-surface-1 px-4 py-3 text-sm">
+        <div>
+          <span class="text-text-muted">Total Pipeline:</span>{" "}
+          <span class="font-medium">{formatCurrency(totalValue)}</span>
+        </div>
+        <div>
+          <span class="text-text-muted">Weighted Value:</span>{" "}
+          <span class="font-medium text-[var(--color-accent)]">{formatCurrency(weightedValue)}</span>
+        </div>
+      </div>
+    )}
+
+    {/* Kanban board */}
+    <div class="flex gap-4 overflow-x-auto pb-4">
+      {pipeline.map((stage) => (
+        <div class="flex w-64 shrink-0 flex-col rounded-lg border border-border bg-surface-1">
+          {/* Column header */}
+          <div class="flex items-center justify-between border-b border-border px-3 py-2">
+            <div class="flex items-center gap-2">
+              <Badge variant={statusVariant(stage.stage)}>{stageLabel(stage.stage)}</Badge>
+              <span class="text-xs text-text-muted">{stage.opportunities.length}</span>
+            </div>
+            {stage.totalValue > 0 && (
+              <span class="text-xs tabular-nums text-text-muted">{formatCurrency(stage.totalValue)}</span>
+            )}
+          </div>
+
+          {/* Cards */}
+          <div class="flex flex-1 flex-col gap-2 p-2">
+            {stage.opportunities.length === 0 ? (
+              <div class="py-4 text-center text-xs text-text-muted">No opportunities</div>
+            ) : (
+              stage.opportunities.map((opp: any) => {
+                const oppSlug = clientSlugFromId(opp.id);
+                return (
+                  <a
+                    href={`/opportunities/${oppSlug}`}
+                    data-navigable
+                    class="rounded-md border border-border bg-surface-0 p-3 hover:border-border-hover"
+                  >
+                    <div class="mb-1.5 text-sm font-medium">{opp.data.title}</div>
+                    <div class="flex items-center justify-between text-xs text-text-muted">
+                      <span class="tabular-nums">{formatCurrency(opp.data.value)}</span>
+                      <span>{opp.data.probability}%</span>
+                    </div>
+                    {opp.data["expected-close"] && (
+                      <div class="mt-1 text-xs text-text-muted">
+                        Close: {formatDate(opp.data["expected-close"])}
+                      </div>
+                    )}
+                  </a>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  </main>
+</BaseLayout>

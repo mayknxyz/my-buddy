@@ -1,0 +1,148 @@
+---
+/**
+ * Payments list page.
+ * Displays all payments sorted date-descending with status, method, and client filters.
+ * Summary bar shows total confirmed and pending amounts.
+ * Rows link to the parent invoice detail page.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  statusVariant,
+  formatDate,
+  formatCurrency,
+  clientSlugFromId,
+  paymentMethodLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const statusFilter = Astro.url.searchParams.get("status");
+const methodFilter = Astro.url.searchParams.get("method");
+const clientFilter = Astro.url.searchParams.get("client");
+
+const [allPayments, allClients, allInvoices] = await Promise.all([
+  getCollection("payments").catch(() => []),
+  getCollection("clients").catch(() => []),
+  getCollection("invoices").catch(() => []),
+]);
+
+// Resolve client names
+const clientNameMap = new Map<string, string>();
+for (const c of allClients) {
+  clientNameMap.set(clientSlugFromId(c.id), c.data.name);
+}
+
+// Resolve invoice display IDs (e.g. INV-001)
+const invoiceIdMap = new Map<string, string>();
+const invoiceClientMap = new Map<string, string>();
+for (const inv of allInvoices) {
+  const fileSlug = inv.id.split("/").pop()!;
+  invoiceIdMap.set(fileSlug, inv.data.id);
+  invoiceClientMap.set(fileSlug, clientSlugFromId(inv.id));
+}
+
+// Apply filters
+let payments = allPayments;
+if (statusFilter) payments = payments.filter((p) => p.data.status === statusFilter);
+if (methodFilter) payments = payments.filter((p) => p.data.method === methodFilter);
+if (clientFilter) payments = payments.filter((p) => p.data.client === clientFilter);
+
+// Sort by date descending
+payments = payments.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Summary stats
+const totalConfirmed = payments
+  .filter((p) => p.data.status === "confirmed")
+  .reduce((sum, p) => sum + p.data.amount, 0);
+const totalPending = payments
+  .filter((p) => p.data.status === "pending")
+  .reduce((sum, p) => sum + p.data.amount, 0);
+
+const statusOptions = [
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "failed", label: "Failed" },
+];
+
+const methodOptions = [
+  { value: "bank-transfer", label: "Bank Transfer" },
+  { value: "paypal", label: "PayPal" },
+  { value: "stripe", label: "Stripe" },
+  { value: "cash", label: "Cash" },
+];
+
+const clientOptions = Array.from(clientNameMap.entries())
+  .sort((a, b) => a[1].localeCompare(b[1]))
+  .map(([value, label]) => ({ value, label }));
+---
+
+<BaseLayout title="Payments — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Payments" count={payments.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Payments" }]}>
+      <FilterBar>
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+        <FilterSelect name="method" label="Method" options={methodOptions} selected={methodFilter ?? undefined} />
+        <FilterSelect name="client" label="Client" options={clientOptions} selected={clientFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {payments.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalConfirmed)}</div>
+          <div class="text-sm text-text-muted">Confirmed</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalPending)}</div>
+          <div class="text-sm text-text-muted">Pending</div>
+        </div>
+      </div>
+    )}
+
+    {payments.length === 0 ? (
+      <EmptyState title="No payments found" description={statusFilter || methodFilter || clientFilter ? "Try changing the filters." : "Record your first payment to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {payments.map((payment) => {
+          const clientSlug = payment.data.client;
+          const clientName = clientNameMap.get(clientSlug) ?? clientSlug;
+          const invoiceFileSlug = payment.data.invoice;
+          const invoiceDisplayId = invoiceIdMap.get(invoiceFileSlug) ?? invoiceFileSlug;
+          const invoiceClientSlug = invoiceClientMap.get(invoiceFileSlug) ?? clientSlug;
+
+          return (
+            <a
+              href={`/invoices/${invoiceClientSlug}/${invoiceFileSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{payment.data.id}</span>
+                  <span class="text-sm text-text-muted">{formatDate(payment.data.date)}</span>
+                </div>
+                <div class="mt-0.5 flex items-center gap-2 text-sm text-text-muted">
+                  <span>{clientName}</span>
+                  <span>·</span>
+                  <span>{invoiceDisplayId}</span>
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <span class="font-medium tabular-nums">{formatCurrency(payment.data.amount)}</span>
+                <Badge variant={statusVariant(payment.data.method)}>{paymentMethodLabel(payment.data.method)}</Badge>
+                <Badge variant={statusVariant(payment.data.status)}>{payment.data.status}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

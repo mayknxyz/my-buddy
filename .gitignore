@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.astro/
+
+# Instance data — gitignored in public repo, tracked in instances
+content/
+buddy.config.ts
+buddy.instances.json
+
+# Generated data
+src/data/*.json
+
+# Temporary
+temp/
+
+# OS
+.DS_Store

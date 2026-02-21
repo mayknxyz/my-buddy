@@ -1,0 +1,31 @@
+---
+/**
+ * Reusable dashboard widget card.
+ * Displays a metric label, value, and optional detail content via slot.
+ */
+interface Props {
+  title: string;
+  value?: string | number;
+  href?: string;
+}
+
+const { title, value, href } = Astro.props;
+---
+
+<div class="rounded-lg border border-border bg-surface-1 p-4">
+  <div class="mb-1 text-xs font-medium uppercase tracking-wide text-text-muted">
+    {title}
+  </div>
+  {value !== undefined && (
+    <div class="text-2xl font-bold tabular-nums">
+      {href ? (
+        <a href={href} class="hover:text-[var(--color-accent)]">{value}</a>
+      ) : (
+        value
+      )}
+    </div>
+  )}
+  <div class="mt-2 text-sm text-text-secondary">
+    <slot />
+  </div>
+</div>

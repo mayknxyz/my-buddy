@@ -1,0 +1,108 @@
+---
+/**
+ * Interactions activity log.
+ * Shows all interactions sorted date-descending with type/direction filters.
+ * Rows link to parent client.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { statusVariant, formatDate, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const typeFilter = Astro.url.searchParams.get("type");
+const directionFilter = Astro.url.searchParams.get("direction");
+
+const allInteractions = await getCollection("interactions").catch(() => []);
+
+let interactions = allInteractions;
+if (typeFilter) interactions = interactions.filter((i) => i.data.type === typeFilter);
+if (directionFilter) interactions = interactions.filter((i) => i.data.direction === directionFilter);
+
+// Sort by date descending
+interactions = interactions.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Resolve client names for display
+const allClients = await getCollection("clients").catch(() => []);
+const clientNameMap = new Map<string, string>();
+for (const c of allClients) {
+  const slug = clientSlugFromId(c.id);
+  clientNameMap.set(slug, c.data.name);
+}
+
+const typeOptions = [
+  { value: "call", label: "Call" },
+  { value: "email", label: "Email" },
+  { value: "chat", label: "Chat" },
+  { value: "in-person", label: "In Person" },
+  { value: "async", label: "Async" },
+];
+
+const directionOptions = [
+  { value: "inbound", label: "Inbound" },
+  { value: "outbound", label: "Outbound" },
+];
+---
+
+<BaseLayout title="Interactions — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Interactions" count={interactions.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Interactions" }]}>
+      <FilterBar>
+        <FilterSelect name="type" label="Type" options={typeOptions} selected={typeFilter ?? undefined} />
+        <FilterSelect name="direction" label="Direction" options={directionOptions} selected={directionFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {interactions.length === 0 ? (
+      <EmptyState title="No interactions found" description={typeFilter || directionFilter ? "Try changing the filters." : "Log your first interaction to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {interactions.map((interaction) => {
+          const clientSlug = interaction.data.client;
+          const clientName = clientNameMap.get(clientSlug) ?? clientSlug;
+          const hasFollowUp = !!interaction.data["follow-up"];
+          const followUpDate = interaction.data["follow-up"];
+
+          return (
+            <a
+              href={`/clients/${clientSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{interaction.data.title}</span>
+                  {hasFollowUp && (
+                    <span class="text-xs text-warning" title={`Follow-up: ${followUpDate ? formatDate(followUpDate) : ""}`}>
+                      follow-up
+                    </span>
+                  )}
+                </div>
+                <div class="mt-0.5 flex items-center gap-2 text-sm text-text-muted">
+                  <span>{formatDate(interaction.data.date)}</span>
+                  <span>·</span>
+                  <span>{clientName}</span>
+                  {interaction.data.summary && (
+                    <>
+                      <span>·</span>
+                      <span class="truncate">{interaction.data.summary}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-2 pl-4">
+                <Badge variant={statusVariant(interaction.data.type)}>{interaction.data.type}</Badge>
+                <Badge variant={statusVariant(interaction.data.direction)}>{interaction.data.direction}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

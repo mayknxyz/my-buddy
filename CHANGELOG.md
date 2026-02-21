@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-22
+
+### Added
+
+- Sidebar navigation with 17 grouped links (Overview, CRM, Projects,
+  Finance, Operations), mobile hamburger overlay, compact toggle with
+  localStorage persistence, and FOUC prevention
+- Calendar page with monthly CSS grid, meetings and task due dates,
+  month navigation via `?month=YYYY-MM` query param
+- SortHeader atom component for clickable column sorting
+- Sortable columns on Projects and Tasks list pages
+- CSV and JSON export API endpoints at `/api/export/{collection}.{csv,json}`
+  for 15 collections
+- Recurring task support: `recurrence` and `recurrence-end` schema fields,
+  template updates, and badge display on task list
+- Dashboard pinned items from `src/data/pinned.json`
+- Dashboard overdue task detection with danger styling
+- Calendar keyboard chord (`g v`) and help modal entry
+- Vitest test infrastructure with 27 tests covering wiki-links
+  build-index and remark plugin
+- `test` and `test:watch` package scripts
+
+### Changed
+
+- `text-muted` color bumped from 0.5 to 0.6 oklch lightness for
+  WCAG AA 4.5:1 contrast against surface-0
+- Help modal uses z-index token (`--z-modal`) instead of hardcoded `z-50`
+- Navigable item list cached with MutationObserver invalidation
+  for better j/k keyboard performance
+- Remark wiki-links plugin accepts injectable index for testability
+
 ## [0.2.2] - 2026-02-17
 
 ### Fixed
@@ -98,6 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI scaffolding tool via `bun create my-buddy`
 - MIT license
 
+[0.3.0]: https://github.com/mayknxyz/my-buddy/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/mayknxyz/my-buddy/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mayknxyz/my-buddy/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mayknxyz/my-buddy/compare/v0.1.1...v0.2.0

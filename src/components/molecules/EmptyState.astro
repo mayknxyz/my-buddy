@@ -1,0 +1,16 @@
+---
+/**
+ * Centered empty state for lists with no matching items.
+ */
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<div class="flex flex-col items-center justify-center py-16 text-center">
+  <p class="text-lg font-medium text-text-secondary">{title}</p>
+  {description && <p class="mt-1 text-sm text-text-muted">{description}</p>}
+</div>

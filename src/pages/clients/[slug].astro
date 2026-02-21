@@ -1,0 +1,225 @@
+---
+/**
+ * Client detail page.
+ * Shows client profile with contacts, projects, contracts, invoices,
+ * interactions, and proposals from getClientWithRelations().
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { getClientWithRelations } from "@/lib/relations";
+import { statusVariant, formatDate, formatCurrency, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+import { render } from "astro:content";
+
+export async function getStaticPaths() {
+  const clients = await getCollection("clients").catch(() => []);
+  return clients.map((c) => ({
+    params: { slug: clientSlugFromId(c.id) },
+  }));
+}
+
+const { slug } = Astro.params;
+const data = await getClientWithRelations(slug!);
+
+if (!data.client) {
+  return Astro.redirect("/clients");
+}
+
+const client = data.client;
+const { Content } = await render(client as any);
+
+// Sort interactions by date descending
+const recentInteractions = data.interactions
+  .sort((a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 10);
+
+// Sort invoices by date descending
+const recentInvoices = data.invoices
+  .sort((a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 5);
+---
+
+<BaseLayout title={`${client.data.name} — Clients`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title={client.data.name}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Clients", href: "/clients" },
+        { label: client.data.name },
+      ]}
+    >
+      <Badge variant={statusVariant(client.data.status)}>{client.data.status}</Badge>
+    </PageHeader>
+
+    {/* Client info */}
+    <div class="mb-8 flex flex-wrap gap-6 text-sm text-text-secondary">
+      {client.data.industry && (
+        <div>
+          <span class="text-text-muted">Industry:</span> {client.data.industry}
+        </div>
+      )}
+      {client.data.website && (
+        <div>
+          <span class="text-text-muted">Website:</span>{" "}
+          <a href={client.data.website} target="_blank" rel="noopener" class="text-[var(--color-accent)] hover:underline">
+            {client.data.website}
+          </a>
+        </div>
+      )}
+    </div>
+
+    <div class="space-y-8">
+      {/* Contacts */}
+      {data.contacts.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Contacts</h2>
+          <div class="space-y-1">
+            {data.contacts.map((contact: any) => {
+              const contactSlug = contact.id.split("/").pop();
+              return (
+                <a
+                  href={`/contacts/${slug}/${contactSlug}`}
+                  data-navigable
+                  class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+                >
+                  <div>
+                    <span class="font-medium">{contact.data.name}</span>
+                    {contact.data.role && (
+                      <span class="ml-2 text-sm text-text-muted">{contact.data.role}</span>
+                    )}
+                  </div>
+                  <div class="flex items-center gap-3 text-sm text-text-muted">
+                    {contact.data.email && <span>{contact.data.email}</span>}
+                    <Badge variant={statusVariant(contact.data.status)}>{contact.data.status}</Badge>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Projects */}
+      {data.projects.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Projects</h2>
+          <div class="space-y-1">
+            {data.projects.map((project: any) => {
+              const projectSlug = clientSlugFromId(project.id);
+              return (
+                <a
+                  href={`/projects/${projectSlug}`}
+                  data-navigable
+                  class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+                >
+                  <span class="font-medium">{project.data.title}</span>
+                  <Badge variant={statusVariant(project.data.status)}>{project.data.status}</Badge>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Contracts */}
+      {data.contracts.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Contracts</h2>
+          <div class="space-y-1">
+            {data.contracts.map((contract: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                <div>
+                  <span class="font-medium">{contract.data.title}</span>
+                  <span class="ml-2 text-sm text-text-muted">{contract.data.type}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  {contract.data.expires && (
+                    <span class="text-sm text-text-muted">Expires {formatDate(contract.data.expires)}</span>
+                  )}
+                  <Badge variant={statusVariant(contract.data.status)}>{contract.data.status}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Invoices */}
+      {recentInvoices.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Recent Invoices</h2>
+          <div class="space-y-1">
+            {recentInvoices.map((inv: any) => {
+              const invoiceSlug = inv.id.split("/").pop();
+              return (
+                <a
+                  href={`/invoices/${slug}/${invoiceSlug}`}
+                  data-navigable
+                  class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+                >
+                  <div>
+                    <span class="font-medium">{inv.data.id}</span>
+                    <span class="ml-2 text-sm text-text-muted">{formatDate(inv.data.date)}</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="font-medium tabular-nums">{formatCurrency(inv.data.amount)}</span>
+                    <Badge variant={statusVariant(inv.data.status)}>{inv.data.status}</Badge>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Interactions */}
+      {recentInteractions.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Recent Interactions</h2>
+          <div class="space-y-1">
+            {recentInteractions.map((interaction: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                <div>
+                  <span class="font-medium">{interaction.data.title}</span>
+                  <span class="ml-2 text-sm text-text-muted">{formatDate(interaction.data.date)}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Badge variant={statusVariant(interaction.data.type)}>{interaction.data.type}</Badge>
+                  <Badge variant={statusVariant(interaction.data.direction)}>{interaction.data.direction}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Proposals */}
+      {data.proposals.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Proposals</h2>
+          <div class="space-y-1">
+            {data.proposals.map((proposal: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                <div>
+                  <span class="font-medium">{proposal.data.title}</span>
+                  <span class="ml-2 text-sm text-text-muted">{formatDate(proposal.data.date)}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="font-medium tabular-nums">{formatCurrency(proposal.data.value)}</span>
+                  <Badge variant={statusVariant(proposal.data.status)}>{proposal.data.status}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Markdown body */}
+      <section class="prose prose-sm max-w-none">
+        <Content />
+      </section>
+    </div>
+  </main>
+</BaseLayout>

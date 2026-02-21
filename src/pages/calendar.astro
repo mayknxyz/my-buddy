@@ -1,0 +1,167 @@
+---
+/**
+ * Calendar view page.
+ * Displays meetings and task due dates in a monthly CSS grid calendar.
+ * Navigate months via ?month=YYYY-MM query param.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { statusVariant, meetingTypeLabel } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+// Month navigation via query param
+const monthParam = Astro.url.searchParams.get("month");
+const now = new Date();
+const [targetYear, targetMonth] = monthParam
+  ? monthParam.split("-").map(Number)
+  : [now.getFullYear(), now.getMonth() + 1];
+
+const firstDay = new Date(targetYear, targetMonth - 1, 1);
+const lastDay = new Date(targetYear, targetMonth, 0);
+const daysInMonth = lastDay.getDate();
+const startDow = firstDay.getDay(); // 0 = Sunday
+
+// Prev/next month params
+const prevDate = new Date(targetYear, targetMonth - 2, 1);
+const nextDate = new Date(targetYear, targetMonth, 1);
+const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+const nextMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+const monthLabel = firstDay.toLocaleString("en-US", { month: "long", year: "numeric" });
+
+// Fetch meetings and tasks
+const [allMeetings, allTasks] = await Promise.all([
+  getCollection("meetings").catch(() => []),
+  getCollection("tasks").catch(() => []),
+]);
+
+// Group meetings by day number
+type CalendarEvent = { title: string; type: "meeting" | "task-due"; variant: string };
+const dayEvents = new Map<number, CalendarEvent[]>();
+
+for (const meeting of allMeetings) {
+  const d = new Date(meeting.data.date);
+  if (d.getFullYear() === targetYear && d.getMonth() + 1 === targetMonth) {
+    const day = d.getDate();
+    const events = dayEvents.get(day) ?? [];
+    events.push({
+      title: meeting.data.title,
+      type: "meeting",
+      variant: "info",
+    });
+    dayEvents.set(day, events);
+  }
+}
+
+// Task due dates in this month
+for (const task of allTasks) {
+  if (task.data.status === "done" || !task.data.due) continue;
+  const d = new Date(task.data.due);
+  if (d.getFullYear() === targetYear && d.getMonth() + 1 === targetMonth) {
+    const day = d.getDate();
+    const events = dayEvents.get(day) ?? [];
+    events.push({
+      title: task.data.title,
+      type: "task-due",
+      variant: task.data.priority === "high" ? "danger" : "warning",
+    });
+    dayEvents.set(day, events);
+  }
+}
+
+const todayDate = now.getDate();
+const isCurrentMonth = now.getFullYear() === targetYear && now.getMonth() + 1 === targetMonth;
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+---
+
+<BaseLayout title={`Calendar — ${monthLabel}`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title="Calendar"
+      breadcrumbs={[{ label: "Home", href: "/" }, { label: "Calendar" }]}
+    />
+
+    {/* Month navigation */}
+    <div class="mb-4 flex items-center justify-between">
+      <a
+        href={`/calendar?month=${prevMonth}`}
+        class="rounded px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-1"
+      >
+        &larr; Prev
+      </a>
+      <h2 class="text-lg font-semibold">{monthLabel}</h2>
+      <a
+        href={`/calendar?month=${nextMonth}`}
+        class="rounded px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-1"
+      >
+        Next &rarr;
+      </a>
+    </div>
+
+    {/* Calendar grid */}
+    <div class="grid grid-cols-7 gap-px rounded-lg border border-border bg-border overflow-hidden">
+      {/* Day-of-week headers */}
+      {DOW_LABELS.map((dow) => (
+        <div class="bg-surface-1 px-2 py-2 text-center text-xs font-medium uppercase tracking-wide text-text-muted">
+          {dow}
+        </div>
+      ))}
+
+      {/* Empty cells before first day */}
+      {Array.from({ length: startDow }).map(() => (
+        <div class="min-h-24 bg-surface-0 p-1" />
+      ))}
+
+      {/* Day cells */}
+      {Array.from({ length: daysInMonth }).map((_, i) => {
+        const day = i + 1;
+        const events = dayEvents.get(day) ?? [];
+        const isToday = isCurrentMonth && day === todayDate;
+        return (
+          <div class={`min-h-24 bg-surface-0 p-1 ${isToday ? "ring-1 ring-inset ring-[var(--color-accent)]" : ""}`}>
+            <div class="mb-1 flex items-center justify-between px-1">
+              <span class={`text-xs font-medium ${isToday ? "text-[var(--color-accent)]" : "text-text-secondary"}`}>
+                {day}
+              </span>
+              {events.length > 0 && (
+                <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+              )}
+            </div>
+            <div class="space-y-0.5">
+              {events.slice(0, 3).map((ev) => (
+                <div class={`truncate rounded px-1 py-0.5 text-[0.65rem] leading-tight ${
+                  ev.type === "meeting"
+                    ? "bg-info/10 text-info"
+                    : ev.variant === "danger"
+                      ? "bg-danger/10 text-danger"
+                      : "bg-warning/10 text-warning"
+                }`}>
+                  {ev.title}
+                </div>
+              ))}
+              {events.length > 3 && (
+                <span class="block px-1 text-[0.6rem] text-text-muted">+{events.length - 3} more</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    {/* Legend */}
+    <div class="mt-4 flex items-center gap-4 text-xs text-text-muted">
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block h-2 w-2 rounded bg-info/30" />
+        <span>Meeting</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block h-2 w-2 rounded bg-warning/30" />
+        <span>Task due</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block h-2 w-2 rounded bg-danger/30" />
+        <span>High priority due</span>
+      </div>
+    </div>
+  </main>
+</BaseLayout>

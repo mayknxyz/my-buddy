@@ -1,0 +1,28 @@
+---
+/**
+ * Page header with title, optional count badge, breadcrumbs, and filter slot.
+ * Used by all collection list and detail pages for consistent layout.
+ */
+import Breadcrumb from "@/components/molecules/Breadcrumb.astro";
+
+interface Props {
+  title: string;
+  count?: number;
+  breadcrumbs?: { label: string; href?: string }[];
+}
+
+const { title, count, breadcrumbs } = Astro.props;
+---
+
+{breadcrumbs && <Breadcrumb items={breadcrumbs} />}
+<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <h1 class="flex items-center gap-3 text-2xl font-bold">
+    {title}
+    {count !== undefined && (
+      <span class="rounded-md bg-surface-2 px-2 py-0.5 text-sm font-medium text-text-secondary">
+        {count}
+      </span>
+    )}
+  </h1>
+  <slot />
+</div>

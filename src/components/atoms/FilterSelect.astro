@@ -1,0 +1,28 @@
+---
+/**
+ * Styled select dropdown for filter bars.
+ * Always includes an "All" option as the first choice.
+ */
+interface Props {
+  name: string;
+  label: string;
+  options: { value: string; label: string }[];
+  selected?: string;
+}
+
+const { name, label, options, selected } = Astro.props;
+---
+
+<label class="flex items-center gap-2 text-sm text-text-secondary">
+  <span class="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</span>
+  <select
+    name={name}
+    data-filter-select
+    class="rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-text-primary focus:border-[var(--color-accent)] focus:outline-none"
+  >
+    <option value="" selected={!selected}>All</option>
+    {options.map((opt) => (
+      <option value={opt.value} selected={selected === opt.value}>{opt.label}</option>
+    ))}
+  </select>
+</label>

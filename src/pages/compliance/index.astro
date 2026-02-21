@@ -1,0 +1,136 @@
+---
+/**
+ * Compliance documents list page.
+ * Displays policies and legal documents sorted by review-due ascending (soonest first).
+ * Past-due review dates highlighted in danger. Non-navigable rows.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  statusVariant,
+  formatDate,
+  complianceTypeLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const typeFilter = Astro.url.searchParams.get("type");
+const statusFilter = Astro.url.searchParams.get("status");
+
+const allCompliance = await getCollection("compliance").catch(() => []);
+
+// Apply filters
+let docs = allCompliance;
+if (typeFilter) docs = docs.filter((d) => d.data.type === typeFilter);
+if (statusFilter) docs = docs.filter((d) => d.data.status === statusFilter);
+
+// Sort by review-due ascending, nulls last
+const now = new Date();
+docs = docs.sort((a, b) => {
+  const aDate = a.data["review-due"] ? new Date(a.data["review-due"]).getTime() : Number.MAX_SAFE_INTEGER;
+  const bDate = b.data["review-due"] ? new Date(b.data["review-due"]).getTime() : Number.MAX_SAFE_INTEGER;
+  return aDate - bDate;
+});
+
+// Summary stats
+const activeCount = docs.filter((d) => d.data.status === "active").length;
+const overdueCount = docs.filter((d) => {
+  const reviewDue = d.data["review-due"];
+  return reviewDue && new Date(reviewDue) < now && d.data.status !== "archived";
+}).length;
+const draftCount = docs.filter((d) => d.data.status === "draft").length;
+
+const typeOptions = [
+  { value: "privacy-policy", label: "Privacy Policy" },
+  { value: "terms-of-service", label: "Terms of Service" },
+  { value: "dpa", label: "DPA" },
+  { value: "cookie-policy", label: "Cookie Policy" },
+  { value: "acceptable-use", label: "Acceptable Use" },
+];
+
+const statusOptions = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "archived", label: "Archived" },
+];
+
+// WHY: Precompute past-due flags to avoid < in template (Astro parser chokes on it)
+const pastDueIds = new Set(
+  docs
+    .filter((d) => {
+      const reviewDue = d.data["review-due"];
+      return reviewDue && new Date(reviewDue).getTime() < now.getTime() && d.data.status !== "archived";
+    })
+    .map((d) => d.id)
+);
+---
+
+<BaseLayout title="Compliance — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Compliance" count={docs.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Compliance" }]}>
+      <FilterBar>
+        <FilterSelect name="type" label="Type" options={typeOptions} selected={typeFilter ?? undefined} />
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {docs.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{activeCount}</div>
+          <div class="text-sm text-text-muted">Active</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class={`text-2xl font-bold tabular-nums ${overdueCount > 0 ? "text-danger" : ""}`}>{overdueCount}</div>
+          <div class="text-sm text-text-muted">Review Overdue</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{draftCount}</div>
+          <div class="text-sm text-text-muted">Drafts</div>
+        </div>
+      </div>
+    )}
+
+    {docs.length === 0 ? (
+      <EmptyState title="No compliance documents found" description={typeFilter || statusFilter ? "Try changing the filters." : "Add your first compliance document to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {docs.map((doc) => {
+          const reviewDue = doc.data["review-due"];
+          const isPastDue = pastDueIds.has(doc.id);
+
+          return (
+            <div
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{doc.data.title}</span>
+                </div>
+                <div class="mt-0.5 flex items-center gap-3 text-sm text-text-muted">
+                  {doc.data.effective && (
+                    <span>Effective {formatDate(doc.data.effective)}</span>
+                  )}
+                  {reviewDue && (
+                    <span class={isPastDue ? "text-danger font-medium" : ""}>
+                      Review due {formatDate(reviewDue)}
+                      {isPastDue && " (overdue)"}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <Badge variant="info">{complianceTypeLabel(doc.data.type)}</Badge>
+                <Badge variant={statusVariant(doc.data.status)}>{doc.data.status}</Badge>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

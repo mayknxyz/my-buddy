@@ -1,0 +1,149 @@
+---
+/**
+ * Subscriptions list page.
+ * Displays recurring subscriptions sorted by renewal date ascending (soonest first).
+ * Renewal within 30 days shows a warning indicator. Non-navigable rows.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  statusVariant,
+  formatCurrency,
+  formatDate,
+  formatRelativeDate,
+  subscriptionCategoryLabel,
+  billingLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const categoryFilter = Astro.url.searchParams.get("category");
+const statusFilter = Astro.url.searchParams.get("status");
+const billingFilter = Astro.url.searchParams.get("billing");
+
+const allSubscriptions = await getCollection("subscriptions").catch(() => []);
+
+// Apply filters
+let subscriptions = allSubscriptions;
+if (categoryFilter) subscriptions = subscriptions.filter((s) => s.data.category === categoryFilter);
+if (statusFilter) subscriptions = subscriptions.filter((s) => s.data.status === statusFilter);
+if (billingFilter) subscriptions = subscriptions.filter((s) => s.data.billing === billingFilter);
+
+// Sort by renewal date ascending (soonest first)
+subscriptions = subscriptions.sort(
+  (a, b) => new Date(a.data.renewal).getTime() - new Date(b.data.renewal).getTime()
+);
+
+// Summary stats
+const now = new Date();
+const thirtyDaysOut = new Date(now.getTime() + 30 * 86400000);
+
+// WHY: Normalize monthly burn — annual subscriptions divided by 12
+const monthlyBurn = subscriptions
+  .filter((s) => s.data.status === "active")
+  .reduce((sum, s) => {
+    return sum + (s.data.billing === "monthly" ? s.data.cost : s.data.cost / 12);
+  }, 0);
+
+const annualCost = subscriptions
+  .filter((s) => s.data.status === "active")
+  .reduce((sum, s) => {
+    return sum + (s.data.billing === "annual" ? s.data.cost : s.data.cost * 12);
+  }, 0);
+
+const renewingSoon = subscriptions.filter(
+  (s) => s.data.status === "active" && new Date(s.data.renewal) <= thirtyDaysOut
+).length;
+
+const categoryOptions = [
+  { value: "design", label: "Design" },
+  { value: "dev", label: "Dev" },
+  { value: "marketing", label: "Marketing" },
+  { value: "productivity", label: "Productivity" },
+  { value: "infra", label: "Infrastructure" },
+  { value: "other", label: "Other" },
+];
+
+const statusOptions = [
+  { value: "active", label: "Active" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "paused", label: "Paused" },
+];
+
+const billingOptions = [
+  { value: "monthly", label: "Monthly" },
+  { value: "annual", label: "Annual" },
+];
+
+// WHY: Precompute renewal-soon flags to avoid <= in template (Astro parser chokes on it)
+const renewingSoonIds = new Set(
+  subscriptions
+    .filter((s) => s.data.status === "active" && new Date(s.data.renewal).getTime() <= thirtyDaysOut.getTime())
+    .map((s) => s.id)
+);
+---
+
+<BaseLayout title="Subscriptions — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Subscriptions" count={subscriptions.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Subscriptions" }]}>
+      <FilterBar>
+        <FilterSelect name="category" label="Category" options={categoryOptions} selected={categoryFilter ?? undefined} />
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+        <FilterSelect name="billing" label="Billing" options={billingOptions} selected={billingFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {subscriptions.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(monthlyBurn)}</div>
+          <div class="text-sm text-text-muted">Monthly Burn</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(annualCost)}</div>
+          <div class="text-sm text-text-muted">Annual Cost</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class={`text-2xl font-bold tabular-nums ${renewingSoon > 0 ? "text-warning" : ""}`}>{renewingSoon}</div>
+          <div class="text-sm text-text-muted">Renewing Soon</div>
+        </div>
+      </div>
+    )}
+
+    {subscriptions.length === 0 ? (
+      <EmptyState title="No subscriptions found" description={categoryFilter || statusFilter || billingFilter ? "Try changing the filters." : "Track your first subscription to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {subscriptions.map((sub) => {
+          const isRenewingSoon = renewingSoonIds.has(sub.id);
+
+          return (
+            <div
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{sub.data.title}</span>
+                  {isRenewingSoon && (
+                    <span class="text-sm text-warning">renewing {formatRelativeDate(sub.data.renewal)}</span>
+                  )}
+                </div>
+                <div class="mt-0.5 text-sm text-text-muted">
+                  {formatCurrency(sub.data.cost)}/{sub.data.billing === "monthly" ? "mo" : "yr"} — renews {formatDate(sub.data.renewal)}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <Badge variant="info">{subscriptionCategoryLabel(sub.data.category)}</Badge>
+                <Badge variant={statusVariant(sub.data.status)}>{sub.data.status}</Badge>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

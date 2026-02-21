@@ -1,0 +1,165 @@
+---
+/**
+ * Expenses list page.
+ * Displays all expenses sorted date-descending with category, recurring, and project filters.
+ * Summary bar shows total spent, monthly recurring, and one-time totals.
+ * Project-scoped rows link to parent project; general rows are non-navigable.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  statusVariant,
+  formatDate,
+  formatCurrency,
+  clientSlugFromId,
+  expenseCategoryLabel,
+  recurringLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const categoryFilter = Astro.url.searchParams.get("category");
+const recurringFilter = Astro.url.searchParams.get("recurring");
+const projectFilter = Astro.url.searchParams.get("project");
+
+const [allExpenses, allProjects] = await Promise.all([
+  getCollection("expenses").catch(() => []),
+  getCollection("projects").catch(() => []),
+]);
+
+// Resolve project names
+const projectNameMap = new Map<string, string>();
+for (const p of allProjects) {
+  projectNameMap.set(clientSlugFromId(p.id), p.data.title);
+}
+
+// Apply filters
+let expenses = allExpenses;
+if (categoryFilter) expenses = expenses.filter((e) => e.data.category === categoryFilter);
+if (recurringFilter) expenses = expenses.filter((e) => e.data.recurring === recurringFilter);
+if (projectFilter === "general") {
+  expenses = expenses.filter((e) => e.id.startsWith("general/"));
+} else if (projectFilter) {
+  expenses = expenses.filter((e) => e.id.startsWith(`${projectFilter}/`));
+}
+
+// Sort by date descending
+expenses = expenses.sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+
+// Summary stats
+const totalSpent = expenses.reduce((sum, e) => sum + e.data.amount, 0);
+const monthlyRecurring = expenses
+  .filter((e) => e.data.recurring === "monthly")
+  .reduce((sum, e) => sum + e.data.amount, 0);
+const oneTime = expenses
+  .filter((e) => e.data.recurring === "one-time")
+  .reduce((sum, e) => sum + e.data.amount, 0);
+
+const categoryOptions = [
+  { value: "software", label: "Software" },
+  { value: "hardware", label: "Hardware" },
+  { value: "travel", label: "Travel" },
+  { value: "marketing", label: "Marketing" },
+  { value: "office", label: "Office" },
+  { value: "other", label: "Other" },
+];
+
+const recurringOptions = [
+  { value: "monthly", label: "Monthly" },
+  { value: "annual", label: "Annual" },
+  { value: "one-time", label: "One-time" },
+];
+
+const projectOptions = [
+  { value: "general", label: "General" },
+  ...Array.from(projectNameMap.entries())
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([value, label]) => ({ value, label })),
+];
+---
+
+<BaseLayout title="Expenses — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Expenses" count={expenses.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Expenses" }]}>
+      <FilterBar>
+        <FilterSelect name="category" label="Category" options={categoryOptions} selected={categoryFilter ?? undefined} />
+        <FilterSelect name="recurring" label="Recurring" options={recurringOptions} selected={recurringFilter ?? undefined} />
+        <FilterSelect name="project" label="Project" options={projectOptions} selected={projectFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {expenses.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalSpent)}</div>
+          <div class="text-sm text-text-muted">Total Spent</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(monthlyRecurring)}</div>
+          <div class="text-sm text-text-muted">Monthly Recurring</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(oneTime)}</div>
+          <div class="text-sm text-text-muted">One-time</div>
+        </div>
+      </div>
+    )}
+
+    {expenses.length === 0 ? (
+      <EmptyState title="No expenses found" description={categoryFilter || recurringFilter || projectFilter ? "Try changing the filters." : "Record your first expense to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {expenses.map((expense) => {
+          const isGeneral = expense.id.startsWith("general/");
+          const projectSlug = isGeneral ? null : expense.id.split("/")[0];
+          const projectName = projectSlug ? projectNameMap.get(projectSlug) ?? projectSlug : "General";
+          const Tag = isGeneral ? "div" : "a";
+
+          return isGeneral ? (
+            <div
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{expense.data.title}</span>
+                  <span class="text-sm text-text-muted">{formatDate(expense.data.date)}</span>
+                </div>
+                <div class="mt-0.5 text-sm text-text-muted">{projectName}</div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <span class="font-medium tabular-nums">{formatCurrency(expense.data.amount)}</span>
+                <Badge variant={statusVariant(expense.data.category)}>{expenseCategoryLabel(expense.data.category)}</Badge>
+                <Badge variant="neutral">{recurringLabel(expense.data.recurring)}</Badge>
+              </div>
+            </div>
+          ) : (
+            <a
+              href={`/projects/${projectSlug}`}
+              data-navigable
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{expense.data.title}</span>
+                  <span class="text-sm text-text-muted">{formatDate(expense.data.date)}</span>
+                </div>
+                <div class="mt-0.5 text-sm text-text-muted">{projectName}</div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <span class="font-medium tabular-nums">{formatCurrency(expense.data.amount)}</span>
+                <Badge variant={statusVariant(expense.data.category)}>{expenseCategoryLabel(expense.data.category)}</Badge>
+                <Badge variant="neutral">{recurringLabel(expense.data.recurring)}</Badge>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

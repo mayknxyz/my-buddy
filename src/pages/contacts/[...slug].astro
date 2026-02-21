@@ -1,0 +1,145 @@
+---
+/**
+ * Contact detail page.
+ * Uses rest params to handle /contacts/{client}/{contact} URLs.
+ * Shows contact info, parent client link, projects, and interactions.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import { getContactWithRelations } from "@/lib/relations";
+import { statusVariant, formatDate, clientSlugFromId } from "@/lib/format";
+import { getCollection } from "astro:content";
+import { render } from "astro:content";
+
+export async function getStaticPaths() {
+  const contacts = await getCollection("contacts").catch(() => []);
+  return contacts.map((c) => {
+    // WHY: Contact IDs are "{client-slug}/{contact-slug}"
+    // The URL becomes /contacts/{client-slug}/{contact-slug}
+    const parts = c.id.split("/");
+    return {
+      params: { slug: parts.join("/") },
+      props: { contactId: c.id },
+    };
+  });
+}
+
+const { contactId } = Astro.props;
+const slugParts = (Astro.params.slug as string).split("/");
+const clientSlug = slugParts[0];
+const contactSlug = slugParts[slugParts.length - 1];
+
+const data = await getContactWithRelations(contactId ?? `${clientSlug}/${contactSlug}`);
+
+if (!data.contact) {
+  return Astro.redirect("/clients");
+}
+
+const contact = data.contact;
+const { Content } = await render(contact as any);
+
+// Sort interactions by date descending
+const interactions = data.interactions
+  .sort((a: any, b: any) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+
+const clientName = (data.client as any)?.data?.name ?? clientSlug;
+---
+
+<BaseLayout title={`${contact.data.name} — Contacts`}>
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader
+      title={contact.data.name}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Clients", href: "/clients" },
+        { label: clientName, href: `/clients/${clientSlug}` },
+        { label: contact.data.name },
+      ]}
+    >
+      <Badge variant={statusVariant(contact.data.status)}>{contact.data.status}</Badge>
+    </PageHeader>
+
+    {/* Contact info */}
+    <div class="mb-8 flex flex-wrap gap-6 text-sm">
+      {contact.data.role && (
+        <div>
+          <span class="text-text-muted">Role:</span>{" "}
+          <span class="text-text-secondary">{contact.data.role}</span>
+        </div>
+      )}
+      {contact.data.email && (
+        <div>
+          <span class="text-text-muted">Email:</span>{" "}
+          <a href={`mailto:${contact.data.email}`} class="text-[var(--color-accent)] hover:underline">
+            {contact.data.email}
+          </a>
+        </div>
+      )}
+      {contact.data.phone && (
+        <div>
+          <span class="text-text-muted">Phone:</span>{" "}
+          <a href={`tel:${contact.data.phone}`} class="text-[var(--color-accent)] hover:underline">
+            {contact.data.phone}
+          </a>
+        </div>
+      )}
+      <div>
+        <span class="text-text-muted">Client:</span>{" "}
+        <a href={`/clients/${clientSlug}`} class="text-[var(--color-accent)] hover:underline">
+          {clientName}
+        </a>
+      </div>
+    </div>
+
+    <div class="space-y-8">
+      {/* Projects */}
+      {data.projects.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Projects</h2>
+          <div class="space-y-1">
+            {data.projects.map((project: any) => {
+              const projectSlug = clientSlugFromId(project.id);
+              return (
+                <a
+                  href={`/projects/${projectSlug}`}
+                  data-navigable
+                  class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+                >
+                  <span class="font-medium">{project.data.title}</span>
+                  <Badge variant={statusVariant(project.data.status)}>{project.data.status}</Badge>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Interactions timeline */}
+      {interactions.length > 0 && (
+        <section>
+          <h2 class="mb-3 text-lg font-semibold">Interactions</h2>
+          <div class="space-y-1">
+            {interactions.map((interaction: any) => (
+              <div class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1">
+                <div>
+                  <span class="font-medium">{interaction.data.title}</span>
+                  <span class="ml-2 text-sm text-text-muted">{formatDate(interaction.data.date)}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <Badge variant={statusVariant(interaction.data.type)}>{interaction.data.type}</Badge>
+                  <Badge variant={statusVariant(interaction.data.direction)}>{interaction.data.direction}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Markdown body */}
+      <section class="prose prose-sm max-w-none">
+        <Content />
+      </section>
+    </div>
+  </main>
+</BaseLayout>

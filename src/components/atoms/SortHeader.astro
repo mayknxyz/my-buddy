@@ -1,0 +1,36 @@
+---
+/**
+ * Clickable column header for sortable lists.
+ * Renders a link that toggles sort direction, preserving existing URL params.
+ */
+interface Props {
+  field: string;
+  label: string;
+  currentSort: string;
+  currentDir: string;
+  baseUrl: URL;
+}
+
+const { field, label, currentSort, currentDir, baseUrl } = Astro.props;
+
+const isActive = currentSort === field;
+const nextDir = isActive && currentDir === "asc" ? "desc" : "asc";
+const arrow = isActive ? (currentDir === "asc" ? "\u25B2" : "\u25BC") : "";
+
+// Build href preserving existing params
+const href = new URL(baseUrl);
+href.searchParams.set("sort", field);
+href.searchParams.set("dir", nextDir);
+---
+
+<a
+  href={href.pathname + href.search}
+  class:list={[
+    "inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide",
+    isActive ? "text-text-primary" : "text-text-muted hover:text-text-secondary",
+  ]}
+  aria-sort={isActive ? (currentDir === "asc" ? "ascending" : "descending") : "none"}
+>
+  {label}
+  {arrow && <span class="text-[0.6rem]">{arrow}</span>}
+</a>
