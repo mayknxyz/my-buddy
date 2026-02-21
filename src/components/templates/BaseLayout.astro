@@ -2,11 +2,12 @@
 /**
  * Base HTML shell for all pages.
  * Sets the accent color from buddy.config.ts via [data-accent] on <html>.
- * Includes keyboard navigation and help modal.
+ * Includes sidebar navigation, keyboard navigation, and help modal.
  */
 import "@/styles/global.css";
 import { loadConfig } from "@/lib/config";
 import HelpModal from "@/components/organisms/HelpModal.astro";
+import Sidebar from "@/components/organisms/Sidebar.astro";
 
 interface Props {
   title?: string;
@@ -22,10 +23,21 @@ const accent = config.instance.accent;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
+    <!-- WHY: Prevent FOUC — apply compact sidebar before first paint so
+         content doesn't shift when the sidebar script runs later. -->
+    <script is:inline>
+      if (localStorage.getItem("sidebar-compact") === "1") {
+        document.documentElement.setAttribute("data-sidebar-compact", "");
+      }
+    </script>
   </head>
   <body class="min-h-screen bg-surface-0 text-text-primary">
-    <slot />
+    <Sidebar />
+    <div id="content-wrapper" class="sidebar-offset pt-14 lg:pt-0">
+      <slot />
+    </div>
     <HelpModal />
     <script src="@/scripts/keyboard.ts"></script>
+    <script src="@/scripts/sidebar.ts"></script>
   </body>
 </html>

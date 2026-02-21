@@ -4,6 +4,8 @@
  * collections using slug prefix matching and frontmatter references.
  */
 import { getCollection } from "astro:content";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Helper: safe collection fetch — returns empty array if collection is empty
@@ -436,4 +438,78 @@ export async function getKnowledgeForProject(slug: string): Promise<Entry[]> {
 	);
 
 	return [...projectScoped, ...tagged];
+}
+
+// ---------------------------------------------------------------------------
+// 9. getPinnedItems
+// ---------------------------------------------------------------------------
+
+/** A pinned item entry from pinned.json. */
+interface PinnedEntry {
+	collection: string;
+	id: string;
+}
+
+/** A resolved pinned item with its title and route. */
+export interface PinnedItem {
+	collection: string;
+	id: string;
+	title: string;
+	href: string;
+}
+
+/** Route prefix for each collection. */
+const PINNED_ROUTES: Record<string, string> = {
+	projects: "/projects",
+	tasks: "/tasks",
+	clients: "/clients",
+	contacts: "/contacts",
+	leads: "/leads",
+	opportunities: "/opportunities",
+	invoices: "/invoices",
+	meetings: "/meetings",
+	subscriptions: "/subscriptions",
+	team: "/team",
+};
+
+/**
+ * Load pinned items from src/data/pinned.json and resolve their titles.
+ * WHY: Separate file approach keeps schemas clean — pinning is a cross-cutting
+ * concern that doesn't belong in every collection's frontmatter.
+ */
+export async function getPinnedItems(): Promise<PinnedItem[]> {
+	let entries: PinnedEntry[];
+	try {
+		const raw = readFileSync(join(import.meta.dirname, "../data/pinned.json"), "utf-8");
+		entries = JSON.parse(raw);
+	} catch {
+		return [];
+	}
+
+	if (!Array.isArray(entries) || entries.length === 0) return [];
+
+	// Group entries by collection to minimize getCollection calls
+	const byCollection = new Map<string, string[]>();
+	for (const entry of entries) {
+		const ids = byCollection.get(entry.collection) ?? [];
+		ids.push(entry.id);
+		byCollection.set(entry.collection, ids);
+	}
+
+	const resolved: PinnedItem[] = [];
+
+	for (const [collection, ids] of byCollection) {
+		const items = await safeGetCollection<Entry>(collection);
+		const routePrefix = PINNED_ROUTES[collection] ?? `/${collection}`;
+
+		for (const id of ids) {
+			const item = items.find((i: any) => i.id === id);
+			if (item) {
+				const title = (item as any).data.title ?? (item as any).data.name ?? id;
+				resolved.push({ collection, id, title, href: `${routePrefix}/${id}` });
+			}
+		}
+	}
+
+	return resolved;
 }

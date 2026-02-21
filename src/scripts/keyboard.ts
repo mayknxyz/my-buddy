@@ -27,11 +27,24 @@ const CHORD_ROUTES: Record<string, string> = {
 	e: "/interactions",
 	x: "/expenses",
 	y: "/payments",
+	v: "/calendar",
 };
 
-/** Get all navigable items on the page. */
+// WHY: Cache navigable items to avoid querySelectorAll on every j/k keypress.
+// A MutationObserver invalidates the cache when the DOM changes.
+let navigableCache: HTMLElement[] | null = null;
+
+const observer = new MutationObserver(() => {
+	navigableCache = null;
+});
+observer.observe(document.body, { childList: true, subtree: true });
+
+/** Get all navigable items on the page (cached, invalidated on DOM change). */
 function getNavigableItems(): HTMLElement[] {
-	return Array.from(document.querySelectorAll<HTMLElement>("[data-navigable]"));
+	if (!navigableCache) {
+		navigableCache = Array.from(document.querySelectorAll<HTMLElement>("[data-navigable]"));
+	}
+	return navigableCache;
 }
 
 /** Get the currently selected item index, or -1 if none. */

@@ -10,11 +10,14 @@ import Badge from "@/components/atoms/Badge.astro";
 import FilterSelect from "@/components/atoms/FilterSelect.astro";
 import FilterBar from "@/components/molecules/FilterBar.astro";
 import EmptyState from "@/components/molecules/EmptyState.astro";
+import SortHeader from "@/components/atoms/SortHeader.astro";
 import { statusVariant, priorityLabel, formatCurrency, clientSlugFromId } from "@/lib/format";
 import { getCollection } from "astro:content";
 
 const statusFilter = Astro.url.searchParams.get("status");
 const priorityFilter = Astro.url.searchParams.get("priority");
+const sortField = Astro.url.searchParams.get("sort") ?? "";
+const sortDir = Astro.url.searchParams.get("dir") ?? "asc";
 
 const [allProjects, allClients] = await Promise.all([
   getCollection("projects").catch(() => []),
@@ -33,16 +36,45 @@ let projects = allProjects;
 if (statusFilter) projects = projects.filter((p) => p.data.status === statusFilter);
 if (priorityFilter) projects = projects.filter((p) => p.data.priority === priorityFilter);
 
-// Sort: active first, then by priority (high→low), then alphabetical
+// Sort: custom column sort or default (status → priority → name)
 const statusOrder: Record<string, number> = { active: 0, paused: 1, completed: 2, archived: 3 };
 const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-projects = projects.sort((a, b) => {
-  const statusDiff = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
-  if (statusDiff !== 0) return statusDiff;
-  const priDiff = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
-  if (priDiff !== 0) return priDiff;
-  return a.data.title.localeCompare(b.data.title);
-});
+const dir = sortDir === "desc" ? -1 : 1;
+
+if (sortField) {
+  projects = projects.sort((a, b) => {
+    let cmp = 0;
+    switch (sortField) {
+      case "title":
+        cmp = a.data.title.localeCompare(b.data.title);
+        break;
+      case "priority":
+        cmp = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
+        break;
+      case "status":
+        cmp = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
+        break;
+      case "budget":
+        cmp = a.data.budget - b.data.budget;
+        break;
+      case "client": {
+        const aClient = a.data.client ? (clientNameMap.get(a.data.client) ?? "") : "";
+        const bClient = b.data.client ? (clientNameMap.get(b.data.client) ?? "") : "";
+        cmp = aClient.localeCompare(bClient);
+        break;
+      }
+    }
+    return cmp * dir;
+  });
+} else {
+  projects = projects.sort((a, b) => {
+    const statusDiff = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
+    if (statusDiff !== 0) return statusDiff;
+    const priDiff = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
+    if (priDiff !== 0) return priDiff;
+    return a.data.title.localeCompare(b.data.title);
+  });
+}
 
 const statusOptions = [
   { value: "active", label: "Active" },
@@ -71,6 +103,17 @@ const priorityOptions = [
       <EmptyState title="No projects found" description={statusFilter || priorityFilter ? "Try changing the filters." : "Add your first project to get started."} />
     ) : (
       <div class="space-y-1">
+        <div class="flex items-center justify-between px-4 py-2">
+          <div class="flex items-center gap-6">
+            <SortHeader field="title" label="Title" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+            <SortHeader field="client" label="Client" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+          </div>
+          <div class="flex items-center gap-6">
+            <SortHeader field="budget" label="Budget" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+            <SortHeader field="priority" label="Priority" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+            <SortHeader field="status" label="Status" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+          </div>
+        </div>
         {projects.map((project) => {
           const slug = clientSlugFromId(project.id);
           const clientName = project.data.client ? clientNameMap.get(project.data.client) : undefined;

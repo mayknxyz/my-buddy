@@ -21,11 +21,20 @@
   /* Text palette */
   --color-text-primary: oklch(0.95 0.005 285);
   --color-text-secondary: oklch(0.7 0.01 285);
-  --color-text-muted: oklch(0.5 0.01 285);
+  /* WHY: bumped from 0.5 to 0.6 for WCAG AA 4.5:1 contrast against surface-0 */
+  --color-text-muted: oklch(0.6 0.01 285);
 
   /* Border */
   --color-border: oklch(0.3 0.005 285);
   --color-border-hover: oklch(0.4 0.005 285);
+
+  /* Z-index scale */
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-sidebar: 50;
+  --z-modal: 100;
+  --z-overlay: 200;
+  --z-toast: 300;
 
   /* Status colors */
   --color-success: oklch(0.72 0.17 155);
@@ -142,4 +151,42 @@ span.wiki-link-broken {
 
 [data-navigable][data-selected] {
   background-color: var(--color-surface-2);
+}
+
+#sidebar nav {
+  scrollbar-width: none; /* Firefox */
+}
+
+#sidebar nav::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+/* ---------------------------------------------------------------------------
+ * Sidebar — layout offset and compact mode
+ * WHY: The content wrapper uses margin-left to make room for the sidebar.
+ * Compact mode is applied via [data-sidebar-compact] on <html>, set by an
+ * inline script before paint to prevent layout shift (FOUC).
+ * ------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .sidebar-offset {
+    margin-left: 14rem; /* w-56 */
+  }
+
+  [data-sidebar-compact] .sidebar-offset {
+    margin-left: 3.5rem; /* w-14 */
+  }
+
+  [data-sidebar-compact] #sidebar {
+    width: 3.5rem; /* w-14 */
+  }
+
+  [data-sidebar-compact] [data-sidebar-label],
+  [data-sidebar-compact] [data-sidebar-heading] {
+    display: none;
+  }
+
+  [data-sidebar-compact] #sidebar nav a {
+    justify-content: center;
+    padding-inline: 0;
+  }
 }

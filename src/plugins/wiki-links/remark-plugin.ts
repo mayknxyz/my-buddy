@@ -41,8 +41,8 @@ const WIKI_LINK_PATTERN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
  *
  * @returns A unified transformer function
  */
-export function remarkWikiLinks() {
-	const index = loadIndex();
+export function remarkWikiLinks(options?: { index?: WikiLinkIndex }) {
+	const index = options?.index ?? loadIndex();
 
 	return (tree: Root) => {
 		visit(tree, "text", (node: Text, nodeIndex, parent) => {

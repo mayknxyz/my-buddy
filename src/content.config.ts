@@ -114,6 +114,8 @@ const tasks = defineCollection({
 		priority: z.enum(["high", "medium", "low"]),
 		due: z.coerce.date().nullable().optional(),
 		sprint: z.number().nullable().optional(),
+		recurrence: z.enum(["daily", "weekly", "monthly", "yearly"]).nullable().optional(),
+		"recurrence-end": z.coerce.date().nullable().optional(),
 		tags: z.array(z.string()).default([]),
 	}),
 });

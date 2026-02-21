@@ -1,0 +1,38 @@
+---
+/**
+ * Sidebar navigation link with inline SVG icon.
+ * Active state based on current URL path match.
+ */
+interface Props {
+  href: string;
+  label: string;
+  /** SVG path `d` attribute for a 24×24 Heroicons-style stroke icon. */
+  icon: string;
+  currentPath: string;
+  /** Keyboard shortcut hint (e.g. "g p"). */
+  shortcut?: string;
+}
+
+const { href, label, icon, currentPath, shortcut } = Astro.props;
+
+// WHY: Exact match for home, prefix match for all others avoids
+// false active state on "/" when visiting any sub-page.
+const isActive = href === "/" ? currentPath === "/" : currentPath.startsWith(href);
+---
+
+<a
+  href={href}
+  class:list={[
+    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+    isActive
+      ? "bg-[var(--color-accent-subtle)] text-[var(--color-accent)]"
+      : "text-text-secondary hover:bg-surface-2 hover:text-text-primary",
+  ]}
+  aria-current={isActive ? "page" : undefined}
+  title={shortcut ? `${label} (${shortcut})` : label}
+>
+  <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d={icon} />
+  </svg>
+  <span data-sidebar-label>{label}</span>
+</a>

@@ -8,7 +8,7 @@ import DashboardWidget from "@/components/molecules/DashboardWidget.astro";
 import { loadConfig } from "@/lib/config";
 import { formatCurrency } from "@/lib/format";
 import { getCollection } from "astro:content";
-import { getInvoiceSummary, getExpiringAssets, getOpportunityPipeline } from "@/lib/relations";
+import { getInvoiceSummary, getExpiringAssets, getOpportunityPipeline, getPinnedItems } from "@/lib/relations";
 
 const config = await loadConfig();
 
@@ -32,8 +32,9 @@ const [
 // Active projects
 const activeProjects = projects.filter((p) => p.data.status === "active");
 
-// Tasks due this week
+// Tasks due this week + overdue detection
 const now = new Date();
+const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const weekEnd = new Date(now);
 weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
 const tasksDueThisWeek = allTasks.filter((t) => {
@@ -41,6 +42,19 @@ const tasksDueThisWeek = allTasks.filter((t) => {
   const due = t.data.due;
   return due && new Date(due) <= weekEnd;
 });
+
+// WHY: precompute overdue IDs as a Set to avoid `<` comparisons in template
+// expressions, which break the Astro compiler (interpreted as JSX tags)
+const overdueTaskIds = new Set(
+  allTasks
+    .filter((t) => {
+      if (t.data.status === "done") return false;
+      const due = t.data.due;
+      return due && new Date(due) < todayStart;
+    })
+    .map((t) => t.id),
+);
+const overdueTaskCount = overdueTaskIds.size;
 
 // Invoice summary
 const invoiceSummary = await getInvoiceSummary();
@@ -83,6 +97,9 @@ const timeThisWeek = allTimelog
   .filter((t) => new Date(t.data.date) >= weekStart)
   .reduce((sum, t) => sum + t.data.hours, 0);
 
+// Pinned items
+const pinnedItems = await getPinnedItems();
+
 ---
 
 <BaseLayout title={`${config.instance.name} — Dashboard`}>
@@ -91,6 +108,23 @@ const timeThisWeek = allTimelog
       <h1 class="text-3xl font-bold">{config.instance.name}</h1>
       <p class="mt-1 text-text-secondary">{config.persona.greeting}</p>
     </header>
+
+    {pinnedItems.length > 0 && (
+      <div class="mb-6">
+        <h2 class="mb-3 text-sm font-medium uppercase tracking-wide text-text-muted">Pinned</h2>
+        <div class="flex flex-wrap gap-2">
+          {pinnedItems.map((item) => (
+            <a
+              href={item.href}
+              class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm hover:border-border-hover hover:bg-surface-2"
+            >
+              <span class="text-xs text-text-muted">{item.collection}</span>
+              <span class="font-medium">{item.title}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* Row 1: Key metrics */}
@@ -108,11 +142,15 @@ const timeThisWeek = allTimelog
       </DashboardWidget>
 
       <DashboardWidget title="Tasks Due This Week" value={tasksDueThisWeek.length} href="/tasks">
+        {overdueTaskCount > 0 && (
+          <span class="text-danger text-xs font-medium">{overdueTaskCount} overdue</span>
+        )}
         {tasksDueThisWeek.length > 0 && (
           <ul class="space-y-0.5">
             {tasksDueThisWeek.slice(0, 3).map((t) => (
-              <li class="truncate">
+              <li class={`truncate ${overdueTaskIds.has(t.id) ? "text-danger" : ""}`}>
                 <span class={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
+                  overdueTaskIds.has(t.id) ? "bg-danger" :
                   t.data.priority === "high" ? "bg-danger" :
                   t.data.priority === "medium" ? "bg-warning" : "bg-info"
                 }`} />

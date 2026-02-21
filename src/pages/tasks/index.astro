@@ -11,12 +11,15 @@ import Badge from "@/components/atoms/Badge.astro";
 import FilterSelect from "@/components/atoms/FilterSelect.astro";
 import FilterBar from "@/components/molecules/FilterBar.astro";
 import EmptyState from "@/components/molecules/EmptyState.astro";
+import SortHeader from "@/components/atoms/SortHeader.astro";
 import { statusVariant, formatRelativeDate, priorityLabel, clientSlugFromId } from "@/lib/format";
 import { getCollection } from "astro:content";
 
 const statusFilter = Astro.url.searchParams.get("status");
 const priorityFilter = Astro.url.searchParams.get("priority");
 const projectFilter = Astro.url.searchParams.get("project");
+const sortField = Astro.url.searchParams.get("sort") ?? "";
+const sortDir = Astro.url.searchParams.get("dir") ?? "asc";
 
 const [allTasks, allProjects, allTeam] = await Promise.all([
   getCollection("tasks").catch(() => []),
@@ -43,19 +46,50 @@ if (statusFilter) tasks = tasks.filter((t) => t.data.status === statusFilter);
 if (priorityFilter) tasks = tasks.filter((t) => t.data.priority === priorityFilter);
 if (projectFilter) tasks = tasks.filter((t) => t.id.startsWith(`${projectFilter}/`));
 
-// Sort: status order, then priority, then due date
+// Sort: custom column sort or default (status → priority → due)
 const statusOrder: Record<string, number> = { doing: 0, todo: 1, blocked: 2, deferred: 3, done: 4 };
 const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-tasks = tasks.sort((a, b) => {
-  const statusDiff = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
-  if (statusDiff !== 0) return statusDiff;
-  const priDiff = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
-  if (priDiff !== 0) return priDiff;
-  // Tasks with due dates first, sorted ascending
-  const aDue = a.data.due ? new Date(a.data.due).getTime() : Number.MAX_SAFE_INTEGER;
-  const bDue = b.data.due ? new Date(b.data.due).getTime() : Number.MAX_SAFE_INTEGER;
-  return aDue - bDue;
-});
+const dir = sortDir === "desc" ? -1 : 1;
+
+if (sortField) {
+  tasks = tasks.sort((a, b) => {
+    let cmp = 0;
+    switch (sortField) {
+      case "title":
+        cmp = a.data.title.localeCompare(b.data.title);
+        break;
+      case "priority":
+        cmp = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
+        break;
+      case "status":
+        cmp = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
+        break;
+      case "due": {
+        const aDue = a.data.due ? new Date(a.data.due).getTime() : Number.MAX_SAFE_INTEGER;
+        const bDue = b.data.due ? new Date(b.data.due).getTime() : Number.MAX_SAFE_INTEGER;
+        cmp = aDue - bDue;
+        break;
+      }
+      case "project": {
+        const aProj = projectNameMap.get(a.id.split("/")[0]) ?? "";
+        const bProj = projectNameMap.get(b.id.split("/")[0]) ?? "";
+        cmp = aProj.localeCompare(bProj);
+        break;
+      }
+    }
+    return cmp * dir;
+  });
+} else {
+  tasks = tasks.sort((a, b) => {
+    const statusDiff = (statusOrder[a.data.status] ?? 9) - (statusOrder[b.data.status] ?? 9);
+    if (statusDiff !== 0) return statusDiff;
+    const priDiff = (priorityOrder[a.data.priority] ?? 9) - (priorityOrder[b.data.priority] ?? 9);
+    if (priDiff !== 0) return priDiff;
+    const aDue = a.data.due ? new Date(a.data.due).getTime() : Number.MAX_SAFE_INTEGER;
+    const bDue = b.data.due ? new Date(b.data.due).getTime() : Number.MAX_SAFE_INTEGER;
+    return aDue - bDue;
+  });
+}
 
 const statusOptions = [
   { value: "todo", label: "To Do" },
@@ -91,6 +125,17 @@ const projectOptions = Array.from(projectNameMap.entries())
       <EmptyState title="No tasks found" description={statusFilter || priorityFilter || projectFilter ? "Try changing the filters." : "Add your first task to get started."} />
     ) : (
       <div class="space-y-1">
+        <div class="flex items-center justify-between px-4 py-2">
+          <div class="flex items-center gap-6">
+            <SortHeader field="title" label="Title" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+            <SortHeader field="project" label="Project" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+            <SortHeader field="priority" label="Priority" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+          </div>
+          <div class="flex items-center gap-6">
+            <SortHeader field="due" label="Due" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+            <SortHeader field="status" label="Status" currentSort={sortField} currentDir={sortDir} baseUrl={Astro.url} />
+          </div>
+        </div>
         {tasks.map((task) => {
           const projectSlug = task.id.split("/")[0];
           const projectName = projectNameMap.get(projectSlug) ?? projectSlug;
@@ -109,6 +154,9 @@ const projectOptions = Array.from(projectNameMap.entries())
                     task.data.priority === "medium" ? "bg-warning" : "bg-info"
                   }`} />
                   <span class="font-medium">{task.data.title}</span>
+                  {task.data.recurrence && (
+                    <span class="rounded bg-accent-subtle px-1.5 py-0.5 text-xs text-text-muted">{task.data.recurrence}</span>
+                  )}
                 </div>
                 <div class="mt-0.5 flex items-center gap-2 pl-4 text-sm text-text-muted">
                   <span>{projectName}</span>
