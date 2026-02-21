@@ -296,12 +296,13 @@ export async function getExpiringAssets(
 ): Promise<{ label: string; slug: string; expires: Date; type: string }[]> {
 	const cutoff = new Date(Date.now() + days * 86400000);
 
-	const [domains, contracts, subscriptions, software, complianceDocs] = await Promise.all([
+	const [domains, contracts, subscriptions, software, complianceDocs, hardware] = await Promise.all([
 		safeGetCollection<Entry>("assetsDomains"),
 		safeGetCollection<Entry>("contracts"),
 		safeGetCollection<Entry>("subscriptions"),
 		safeGetCollection<Entry>("assetsSoftware"),
 		safeGetCollection<Entry>("compliance"),
+		safeGetCollection<Entry>("assetsHardware"),
 	]);
 
 	const expiring: { label: string; slug: string; expires: Date; type: string }[] = [];
@@ -347,6 +348,18 @@ export async function getExpiringAssets(
 				slug: (c as any).id,
 				expires: new Date(exp),
 				type: "compliance",
+			});
+		}
+	}
+
+	for (const h of hardware) {
+		const exp = (h as any).data["warranty-until"];
+		if (exp && new Date(exp) <= cutoff) {
+			expiring.push({
+				label: (h as any).data.title,
+				slug: (h as any).id,
+				expires: new Date(exp),
+				type: "hardware",
 			});
 		}
 	}

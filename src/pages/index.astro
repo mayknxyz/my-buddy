@@ -136,7 +136,7 @@ const timeThisWeek = allTimelog
         )}
       </DashboardWidget>
 
-      <DashboardWidget title="Expiring Soon" value={expiringAssets.length}>
+      <DashboardWidget title="Expiring Soon" value={expiringAssets.length} href="/assets">
         {expiringAssets.length > 0 ? (
           <ul class="space-y-0.5">
             {expiringAssets.slice(0, 3).map((a) => (

@@ -107,6 +107,12 @@ export function statusVariant(status: string): BadgeVariant {
 		"in-progress": "info",
 		filed: "success",
 		audited: "warning",
+		// Assets
+		storage: "warning",
+		retired: "neutral",
+		sold: "neutral",
+		transferred: "neutral",
+		decommissioned: "danger",
 	};
 
 	return map[status] ?? "neutral";
@@ -202,6 +208,63 @@ export function recurringLabel(recurring: string): string {
 		"one-time": "One-time",
 	};
 	return map[recurring] ?? recurring;
+}
+
+/** Convert a license type slug to a human-readable label. */
+export function licenseTypeLabel(type: string): string {
+	const map: Record<string, string> = {
+		subscription: "Subscription",
+		perpetual: "Perpetual",
+		"open-source": "Open Source",
+		freemium: "Freemium",
+	};
+	return map[type] ?? type;
+}
+
+/** Convert a subscription category slug to a human-readable label. */
+export function subscriptionCategoryLabel(category: string): string {
+	const map: Record<string, string> = {
+		design: "Design",
+		dev: "Dev",
+		marketing: "Marketing",
+		productivity: "Productivity",
+		infra: "Infrastructure",
+		other: "Other",
+	};
+	return map[category] ?? category;
+}
+
+/** Convert a compliance type slug to a human-readable label. */
+export function complianceTypeLabel(type: string): string {
+	const map: Record<string, string> = {
+		"privacy-policy": "Privacy Policy",
+		"terms-of-service": "Terms of Service",
+		dpa: "DPA",
+		"cookie-policy": "Cookie Policy",
+		"acceptable-use": "Acceptable Use",
+	};
+	return map[type] ?? type;
+}
+
+/** Convert a billing frequency slug to a human-readable label. */
+export function billingLabel(billing: string): string {
+	const map: Record<string, string> = {
+		monthly: "Monthly",
+		annual: "Annual",
+	};
+	return map[billing] ?? billing;
+}
+
+/** Convert an asset type key to a human-readable label. */
+export function assetTypeLabel(type: string): string {
+	const map: Record<string, string> = {
+		hardware: "Hardware",
+		software: "Software",
+		domains: "Domains",
+		servers: "Servers",
+		accounts: "Accounts",
+	};
+	return map[type] ?? type;
 }
 
 /** Extract the client slug from a folder-namespaced content ID. */

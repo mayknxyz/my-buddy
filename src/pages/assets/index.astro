@@ -1,0 +1,210 @@
+---
+/**
+ * Assets inventory page.
+ * Combines all 5 asset collections (hardware, software, domains, servers, accounts)
+ * into a unified list with type and status filters. Non-navigable rows.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  statusVariant,
+  formatCurrency,
+  formatDate,
+  assetTypeLabel,
+  licenseTypeLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const typeFilter = Astro.url.searchParams.get("type");
+const statusFilter = Astro.url.searchParams.get("status");
+
+// Fetch all 5 asset collections in parallel
+const [hardware, software, domains, servers, accounts] = await Promise.all([
+  getCollection("assetsHardware").catch(() => []),
+  getCollection("assetsSoftware").catch(() => []),
+  getCollection("assetsDomains").catch(() => []),
+  getCollection("assetsServers").catch(() => []),
+  getCollection("assetsAccounts").catch(() => []),
+]);
+
+// Normalize into a unified shape
+interface NormalizedAsset {
+  id: string;
+  title: string;
+  assetType: string;
+  status: string;
+  cost: number;
+  detail: string;
+  sortKey: string;
+}
+
+const allAssets: NormalizedAsset[] = [];
+
+for (const h of hardware) {
+  allAssets.push({
+    id: h.id,
+    title: h.data.title,
+    assetType: "hardware",
+    status: h.data.status,
+    cost: h.data.cost,
+    detail: `${h.data.type}${h.data["assigned-to"].length > 0 ? ` — ${h.data["assigned-to"].join(", ")}` : ""}`,
+    sortKey: h.data.title.toLowerCase(),
+  });
+}
+
+for (const s of software) {
+  allAssets.push({
+    id: s.id,
+    title: s.data.title,
+    assetType: "software",
+    status: s.data.status,
+    cost: s.data.cost,
+    detail: `${s.data.vendor} — ${licenseTypeLabel(s.data["license-type"])}`,
+    sortKey: s.data.title.toLowerCase(),
+  });
+}
+
+for (const d of domains) {
+  allAssets.push({
+    id: d.id,
+    title: d.data.title,
+    assetType: "domains",
+    status: d.data.status,
+    cost: d.data.cost,
+    detail: `${d.data.registrar}${d.data.expires ? ` — expires ${formatDate(d.data.expires)}` : ""}`,
+    sortKey: d.data.title.toLowerCase(),
+  });
+}
+
+for (const s of servers) {
+  allAssets.push({
+    id: s.id,
+    title: s.data.title,
+    assetType: "servers",
+    status: s.data.status,
+    cost: s.data.cost,
+    detail: `${s.data.provider}${s.data.ip ? ` — ${s.data.ip}` : ""}`,
+    sortKey: s.data.title.toLowerCase(),
+  });
+}
+
+// WHY: assetsAccounts has no status field — normalize to "active"
+for (const a of accounts) {
+  allAssets.push({
+    id: a.id,
+    title: a.data.title,
+    assetType: "accounts",
+    status: "active",
+    cost: 0,
+    detail: `${a.data.owner}${a.data.services.length > 0 ? ` — ${a.data.services.join(", ")}` : ""}`,
+    sortKey: a.data.title.toLowerCase(),
+  });
+}
+
+// Apply filters
+let filtered = allAssets;
+if (typeFilter) filtered = filtered.filter((a) => a.assetType === typeFilter);
+if (statusFilter) filtered = filtered.filter((a) => a.status === statusFilter);
+
+// Sort alphabetically by title
+filtered.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+// Summary stats
+const totalValue = filtered.reduce((sum, a) => sum + a.cost, 0);
+const activeCount = filtered.filter((a) => a.status === "active").length;
+
+const now = new Date();
+const thirtyDaysOut = new Date(now.getTime() + 30 * 86400000);
+const expiringCount = (() => {
+  let count = 0;
+  for (const s of software) {
+    if (s.data.expires && new Date(s.data.expires) <= thirtyDaysOut && (!typeFilter || typeFilter === "software")) count++;
+  }
+  for (const d of domains) {
+    if (d.data.expires && new Date(d.data.expires) <= thirtyDaysOut && (!typeFilter || typeFilter === "domains")) count++;
+  }
+  for (const h of hardware) {
+    if (h.data["warranty-until"] && new Date(h.data["warranty-until"]) <= thirtyDaysOut && (!typeFilter || typeFilter === "hardware")) count++;
+  }
+  return count;
+})();
+
+const typeOptions = [
+  { value: "hardware", label: "Hardware" },
+  { value: "software", label: "Software" },
+  { value: "domains", label: "Domains" },
+  { value: "servers", label: "Servers" },
+  { value: "accounts", label: "Accounts" },
+];
+
+const statusOptions = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "expired", label: "Expired" },
+  { value: "retired", label: "Retired" },
+  { value: "sold", label: "Sold" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "decommissioned", label: "Decommissioned" },
+  { value: "transferred", label: "Transferred" },
+  { value: "storage", label: "Storage" },
+];
+---
+
+<BaseLayout title="Assets — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Assets" count={filtered.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Assets" }]}>
+      <FilterBar>
+        <FilterSelect name="type" label="Type" options={typeOptions} selected={typeFilter ?? undefined} />
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {filtered.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{formatCurrency(totalValue)}</div>
+          <div class="text-sm text-text-muted">Total Asset Value</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{activeCount}</div>
+          <div class="text-sm text-text-muted">Active</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class={`text-2xl font-bold tabular-nums ${expiringCount > 0 ? "text-warning" : ""}`}>{expiringCount}</div>
+          <div class="text-sm text-text-muted">Expiring Soon</div>
+        </div>
+      </div>
+    )}
+
+    {filtered.length === 0 ? (
+      <EmptyState title="No assets found" description={typeFilter || statusFilter ? "Try changing the filters." : "Add your first asset to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {filtered.map((asset) => (
+          <div
+            class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-medium">{asset.title}</span>
+              </div>
+              <div class="mt-0.5 text-sm text-text-muted">{asset.detail}</div>
+            </div>
+            <div class="flex shrink-0 items-center gap-3 pl-4">
+              {asset.cost > 0 && (
+                <span class="font-medium tabular-nums">{formatCurrency(asset.cost)}</span>
+              )}
+              <Badge variant="info">{assetTypeLabel(asset.assetType)}</Badge>
+              <Badge variant={statusVariant(asset.status)}>{asset.status}</Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </main>
+</BaseLayout>

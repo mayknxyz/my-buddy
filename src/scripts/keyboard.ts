@@ -22,6 +22,8 @@ const CHORD_ROUTES: Record<string, string> = {
 	k: "/knowledge",
 	j: "/journal",
 	a: "/assets",
+	s: "/subscriptions",
+	d: "/compliance",
 	e: "/interactions",
 	x: "/expenses",
 	y: "/payments",
