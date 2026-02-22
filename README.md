@@ -1,4 +1,4 @@
-# my-buddy
+# my-buddy-assistant
 
 All-in-one personal business management system. Flat-file, Git-backed,
 terminal-first.
@@ -25,7 +25,7 @@ Astro-powered dashboard provides the UI.
 ## Architecture
 
 ```
-my-buddy/
+my-buddy-assistant/
 ├── src/              # Astro app — pages, components, lib, plugins
 ├── content/          # Flat-file business data (gitignored in public repo)
 ├── content.example/  # Sample data for scaffolding + demo
@@ -93,22 +93,26 @@ bun preview      # Preview the built site
 # ✓ Created: content/files/my-project/proposal-v1.md
 ```
 
-## Multi-Instance
-
-The public repo contains app code only. Real business data lives in private
-instance repos — one per business.
+## Installing Your Own Instance
 
 ```bash
-# Scaffold a new instance
-bun create my-buddy
-
-# Sync app updates to all instances
-bun sync
-
-# Manage instances
-bun instances
-bun instances:add madali-buddy ~/madali-buddy
+curl -fsSL https://raw.githubusercontent.com/mayknxyz/my-buddy-assistant/main/install.sh | bash
+cd my-buddy
+bun dev
 ```
+
+The install script creates a fresh instance with scaffolded content,
+an `upstream` remote for updates, and an instance-specific `CLAUDE.md`
+that restricts AI to your business data.
+
+## Updating Your Instance
+
+```bash
+bun run sync
+```
+
+Fetches and merges the latest app code from upstream. Auto-reinstalls
+dependencies if `package.json` changed.
 
 See [Multi-Instance Architecture](docs/multi-instance.md) for details.
 
@@ -119,7 +123,7 @@ See [Multi-Instance Architecture](docs/multi-instance.md) for details.
 | [PRD](PRD.md) | Full product requirements and module specs |
 | [Entity Relationships](docs/entity-relationships.md) | Collection relationship diagram |
 | [Business Lifecycle](docs/business-lifecycle.md) | Lead → client → project → invoice flow |
-| [Multi-Instance](docs/multi-instance.md) | Public repo → sync → private instances |
+| [Multi-Instance](docs/multi-instance.md) | Install + upstream-remote sync model |
 | [Architecture Decisions](docs/decisions/) | ADRs — one file per major decision |
 | [Changelog](CHANGELOG.md) | Version history |
 

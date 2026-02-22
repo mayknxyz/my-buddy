@@ -1,120 +1,118 @@
 # Multi-Instance Architecture
 
-my-buddy is open-source. The public repo contains app code only. Real
-business data lives in private instance repos — one per business.
+my-buddy-assistant is the open-source template repo. Each business gets its
+own private instance with an `upstream` remote pointing back to the template
+for updates.
 
 ```mermaid
 flowchart TD
     subgraph Public
-        A[my-buddy<br/>GitHub Public]
+        A[my-buddy-assistant<br/>GitHub Public]
     end
 
-    subgraph Local Hub
-        B[Local Clone<br/>~/my-buddy]
+    subgraph Instance 1
+        B[my-buddy<br/>GitHub Private]
     end
 
-    subgraph Private Instances
-        C[madali-buddy<br/>GitHub Private]
-        D[frostapp-buddy<br/>GitHub Private]
-        E[personal-buddy<br/>GitHub Private]
+    subgraph Instance 2
+        C[acme-buddy<br/>GitHub Private]
     end
 
-    A -->|git pull| B
-    B -->|bun sync| C
-    B -->|bun sync| D
-    B -->|bun sync| E
+    A -->|upstream remote| B
+    A -->|upstream remote| C
 
     style A fill:#4f46e5,color:#fff
-    style B fill:#d97706,color:#fff
+    style B fill:#059669,color:#fff
     style C fill:#059669,color:#fff
-    style D fill:#059669,color:#fff
-    style E fill:#059669,color:#fff
 ```
 
 ## Repository Roles
 
-| Repo | Visibility | Contains | Issues/PRs |
+| Repo | Visibility | Contains | Purpose |
 |---|---|---|---|
-| `my-buddy` | Public | App code + `content.example/` | Yes — all development |
-| `madali-buddy` | Private | App code + real content | No — working instance |
-| `frostapp-buddy` | Private | App code + real content | No — working instance |
+| `my-buddy-assistant` | Public | App code + `content.example/` | Template — all development happens here |
+| User's instance | Private | App code + real `content/` | Working instance — business data lives here |
+
+## Installing a New Instance
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mayknxyz/my-buddy-assistant/main/install.sh | bash
+```
+
+The install script:
+
+1. Clones the template repo (shallow)
+2. Strips git history — fresh `git init`
+3. Sets `upstream` remote to `my-buddy-assistant`
+4. Copies `content.example/` → `content/`
+5. Copies `buddy.config.example.ts` → `buddy.config.ts`
+6. Applies `CLAUDE.instance.md` as `CLAUDE.md`
+7. Creates empty `CLAUDE.local.md` for custom AI instructions
+8. Runs `bun install`
+9. Creates initial commit
+10. Optionally creates a private GitHub repo via `gh`
+
+## Syncing Updates
+
+```bash
+bun run sync
+```
+
+The sync script (`scripts/sync.sh`):
+
+1. Guards against dirty working tree (aborts if uncommitted changes)
+2. Fetches from `upstream`
+3. Shows incoming commits
+4. Merges `upstream/main`
+5. Auto-applies `CLAUDE.instance.md` as `CLAUDE.md` if it changed
+6. Auto-runs `bun install` if `package.json` changed
+
+### Handling Merge Conflicts
+
+If a merge conflict occurs, resolve it with standard Git tools:
+
+```bash
+# Fix conflicts manually, then:
+git add .
+git commit
+
+# Escape hatch — accept all upstream app code:
+git checkout upstream/main -- src/
+git add . && git commit
+```
 
 ## What Gets Synced
-
-The sync script (`bun sync`) reads `buddy.instances.json` and rsyncs app
-code to each registered instance.
 
 | Synced (app code) | Not synced (instance-specific) |
 |---|---|
 | `src/` | `content/` |
 | `scripts/` | `buddy.config.ts` |
-| `.templates/` | `buddy.instances.json` |
+| `.templates/` | `CLAUDE.local.md` |
 | `.claude/commands/` | `.git/` |
 | `docs/` | `node_modules/` |
 | `astro.config.mjs` | |
 | `package.json` | |
 | `biome.jsonc` | |
 | `tsconfig.json` | |
+| `CLAUDE.instance.md` | |
 
-After sync, each instance runs `bun install` if `package.json` changed.
+## AI Guardrails
 
-## Scaffolding a New Instance
+Instance `CLAUDE.md` (applied from `CLAUDE.instance.md`) restricts AI to:
 
-```bash
-bun create my-buddy
-```
+- `content/` — business data
+- `buddy.config.ts` — instance configuration
+- `CLAUDE.local.md` — custom AI instructions
 
-1. Copies app code from the public repo
-2. Renames `content.example/` → `content/`
-3. Initializes a new git repo
-4. Prompts for instance name, accent color, and persona config
-5. User links to their own private remote
-
-```bash
-cd ~/new-buddy
-git remote add origin git@github.com:user/new-buddy.git
-git push -u origin main
-```
-
-## Sync Workflow
-
-```bash
-# From the local hub (public repo clone)
-cd ~/my-buddy
-git pull                    # Fetch latest app updates
-bun sync                    # Distribute to all instances
-bun sync --dry-run          # Preview without writing
-```
-
-## Instance Management
-
-```bash
-bun instances                           # List all instances
-bun instances:add madali-buddy ~/madali-buddy   # Register
-bun instances:remove madali-buddy               # Unregister
-```
-
-Registry file (`buddy.instances.json`):
-
-```json
-{
-  "instances": [
-    { "name": "madali-buddy", "path": "~/madali-buddy" },
-    { "name": "frostapp-buddy", "path": "~/frostapp-buddy" }
-  ]
-}
-```
+This prevents accidental edits to app code that would cause merge conflicts
+on the next sync.
 
 ## Content Backup
 
 Each instance IS a private Git repo. Content backup is `git push`.
-No separate backup script needed — the instance's git history is the backup.
 
 ```bash
-# From within an instance
 git add content/
 git commit -m "daily content snapshot"
 git push
 ```
-
-The `/mybuddy.backup` command automates this: stage content, commit, push.
