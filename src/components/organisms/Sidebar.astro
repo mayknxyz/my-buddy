@@ -28,17 +28,26 @@ const icons = {
   compliance: "M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z",
   knowledge: "M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25",
   journal: "M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10",
+  sops: "M9 12H12.75M9 15H12.75M9 18H12.75M15.75 18.75H18C19.2426 18.75 20.25 17.7426 20.25 16.5V6.10822C20.25 4.97324 19.405 4.01015 18.2739 3.91627C17.9006 3.88529 17.5261 3.85858 17.1505 3.83619M11.3495 3.83619C11.2848 4.04602 11.25 4.26894 11.25 4.5C11.25 4.91421 11.5858 5.25 12 5.25H16.5C16.9142 5.25 17.25 4.91421 17.25 4.5C17.25 4.26894 17.2152 4.04602 17.1505 3.83619M11.3495 3.83619C11.6328 2.91757 12.4884 2.25 13.5 2.25H15C16.0116 2.25 16.8672 2.91757 17.1505 3.83619M11.3495 3.83619C10.9739 3.85858 10.5994 3.88529 10.2261 3.91627C9.09499 4.01015 8.25 4.97324 8.25 6.10822V8.25M8.25 8.25H4.875C4.25368 8.25 3.75 8.75368 3.75 9.375V20.625C3.75 21.2463 4.25368 21.75 4.875 21.75H14.625C15.2463 21.75 15.75 21.2463 15.75 20.625V9.375C15.75 8.75368 15.2463 8.25 14.625 8.25H8.25ZM6.75 12H6.7575V12.0075H6.75V12ZM6.75 15H6.7575V15.0075H6.75V15ZM6.75 18H6.7575V18.0075H6.75V18Z",
+  stack: "M6.42857 9.75L2.25 12L6.42857 14.25M6.42857 9.75L12 12.75L17.5714 9.75M6.42857 9.75L2.25 7.5L12 2.25L21.75 7.5L17.5714 9.75M17.5714 9.75L21.75 12L17.5714 14.25M17.5714 14.25L21.75 16.5L12 21.75L2.25 16.5L6.42857 14.25M17.5714 14.25L12 17.25L6.42857 14.25",
 };
 
-/** Navigation groups with section headings. */
-const sections = [
+// WHY: Discriminated union allows mixing ungrouped links, separators, and
+// headed groups in a single flat array that the template dispatches on.
+type NavItem =
+  | { kind: "link"; href: string; label: string; icon: string; shortcut?: string }
+  | { kind: "separator" }
+  | { kind: "group"; heading: string; links: { href: string; label: string; icon: string; shortcut?: string }[] };
+
+/** Sidebar navigation layout. */
+const navItems: NavItem[] = [
+  { kind: "link", href: "/", label: "Dashboard", icon: icons.dashboard, shortcut: "g z" },
+  { kind: "link", href: "/knowledge", label: "Knowledge", icon: icons.knowledge, shortcut: "g k" },
+  { kind: "link", href: "/journal", label: "Journal", icon: icons.journal, shortcut: "g j" },
+  { kind: "link", href: "/sops", label: "SOPs", icon: icons.sops, shortcut: "g r" },
+  { kind: "separator" },
   {
-    heading: "Overview",
-    links: [
-      { href: "/", label: "Dashboard", icon: icons.dashboard, shortcut: "g z" },
-    ],
-  },
-  {
+    kind: "group",
     heading: "CRM",
     links: [
       { href: "/clients", label: "Clients", icon: icons.clients, shortcut: "g c" },
@@ -48,6 +57,7 @@ const sections = [
     ],
   },
   {
+    kind: "group",
     heading: "Projects",
     links: [
       { href: "/projects", label: "Projects", icon: icons.projects, shortcut: "g p" },
@@ -57,6 +67,7 @@ const sections = [
     ],
   },
   {
+    kind: "group",
     heading: "Finance",
     links: [
       { href: "/invoices", label: "Invoices", icon: icons.invoices, shortcut: "g i" },
@@ -65,13 +76,19 @@ const sections = [
     ],
   },
   {
+    kind: "group",
+    heading: "Tech",
+    links: [
+      { href: "/stack", label: "Stack", icon: icons.stack, shortcut: "g w" },
+    ],
+  },
+  {
+    kind: "group",
     heading: "Operations",
     links: [
       { href: "/assets", label: "Assets", icon: icons.assets, shortcut: "g a" },
       { href: "/subscriptions", label: "Subscriptions", icon: icons.subscriptions, shortcut: "g s" },
       { href: "/compliance", label: "Compliance", icon: icons.compliance, shortcut: "g d" },
-      { href: "/knowledge", label: "Knowledge", icon: icons.knowledge, shortcut: "g k" },
-      { href: "/journal", label: "Journal", icon: icons.journal, shortcut: "g j" },
     ],
   },
 ];
@@ -119,25 +136,43 @@ const sections = [
 
   <!-- Navigation links -->
   <nav class="flex-1 overflow-y-auto px-3 py-4">
-    {sections.map((section, i) => (
-      <div class:list={[i > 0 && "mt-6"]}>
-        <h2 data-sidebar-heading class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
-          {section.heading}
-        </h2>
-        <ul class="space-y-0.5">
-          {section.links.map((link) => (
-            <li>
-              <SidebarLink
-                href={link.href}
-                label={link.label}
-                icon={link.icon}
-                currentPath={currentPath}
-                shortcut={link.shortcut}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-    ))}
+    {navItems.map((item, i) => {
+      if (item.kind === "link") {
+        return (
+          <div class:list={[i > 0 && "mt-0.5"]}>
+            <SidebarLink
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              currentPath={currentPath}
+              shortcut={item.shortcut}
+            />
+          </div>
+        );
+      }
+      if (item.kind === "separator") {
+        return <hr class="my-4 border-border" data-sidebar-heading />;
+      }
+      return (
+        <div class="mt-6">
+          <h2 data-sidebar-heading class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-text-muted">
+            {item.heading}
+          </h2>
+          <ul class="space-y-0.5">
+            {item.links.map((link) => (
+              <li>
+                <SidebarLink
+                  href={link.href}
+                  label={link.label}
+                  icon={link.icon}
+                  currentPath={currentPath}
+                  shortcut={link.shortcut}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    })}
   </nav>
 </aside>

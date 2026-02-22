@@ -1,0 +1,158 @@
+---
+/**
+ * SOPs (Standard Operating Procedures) list page.
+ * Displays procedures sorted by review-due ascending (soonest first).
+ * Review-due is computed from last-reviewed + review-cycle.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  statusVariant,
+  formatDate,
+  sopCategoryLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const categoryFilter = Astro.url.searchParams.get("category");
+const statusFilter = Astro.url.searchParams.get("status");
+
+const allSops = await getCollection("sops").catch(() => []);
+
+// Apply filters
+let docs = allSops;
+if (categoryFilter) docs = docs.filter((d) => d.data.category === categoryFilter);
+if (statusFilter) docs = docs.filter((d) => d.data.status === statusFilter);
+
+/** Compute the next review-due date from last-reviewed + review-cycle. */
+function computeReviewDue(lastReviewed: Date | null, cycle: string | null): Date | null {
+  if (!lastReviewed || !cycle) return null;
+  const d = new Date(lastReviewed);
+  switch (cycle) {
+    case "monthly": d.setMonth(d.getMonth() + 1); break;
+    case "quarterly": d.setMonth(d.getMonth() + 3); break;
+    case "annual": d.setFullYear(d.getFullYear() + 1); break;
+  }
+  return d;
+}
+
+const now = new Date();
+
+// Precompute review-due dates and past-due flags
+const reviewDueMap = new Map<string, Date | null>();
+for (const doc of docs) {
+  reviewDueMap.set(
+    doc.id,
+    computeReviewDue(
+      doc.data["last-reviewed"] ?? null,
+      doc.data["review-cycle"] ?? null,
+    ),
+  );
+}
+
+// WHY: Precompute past-due flags to avoid < in template (Astro parser chokes on it)
+const pastDueIds = new Set(
+  docs
+    .filter((d) => {
+      const due = reviewDueMap.get(d.id);
+      return due && due.getTime() < now.getTime() && d.data.status !== "archived";
+    })
+    .map((d) => d.id)
+);
+
+// Sort by review-due ascending, nulls last
+docs = docs.sort((a, b) => {
+  const aDate = reviewDueMap.get(a.id)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  const bDate = reviewDueMap.get(b.id)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  return aDate - bDate;
+});
+
+// Summary stats
+const activeCount = docs.filter((d) => d.data.status === "active").length;
+const overdueCount = pastDueIds.size;
+const draftCount = docs.filter((d) => d.data.status === "draft").length;
+
+const categoryOptions = [
+  { value: "engineering", label: "Engineering" },
+  { value: "operations", label: "Operations" },
+  { value: "sales", label: "Sales" },
+  { value: "onboarding", label: "Onboarding" },
+  { value: "other", label: "Other" },
+];
+
+const statusOptions = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "archived", label: "Archived" },
+];
+---
+
+<BaseLayout title="SOPs — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="SOPs" count={docs.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "SOPs" }]}>
+      <FilterBar>
+        <FilterSelect name="category" label="Category" options={categoryOptions} selected={categoryFilter ?? undefined} />
+        <FilterSelect name="status" label="Status" options={statusOptions} selected={statusFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {docs.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{activeCount}</div>
+          <div class="text-sm text-text-muted">Active</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class={`text-2xl font-bold tabular-nums ${overdueCount > 0 ? "text-danger" : ""}`}>{overdueCount}</div>
+          <div class="text-sm text-text-muted">Review Overdue</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{draftCount}</div>
+          <div class="text-sm text-text-muted">Drafts</div>
+        </div>
+      </div>
+    )}
+
+    {docs.length === 0 ? (
+      <EmptyState title="No SOPs found" description={categoryFilter || statusFilter ? "Try changing the filters." : "Add your first SOP to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {docs.map((doc) => {
+          const reviewDue = reviewDueMap.get(doc.id);
+          const isPastDue = pastDueIds.has(doc.id);
+
+          return (
+            <div
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{doc.data.title}</span>
+                  {doc.data.owner && (
+                    <span class="text-sm text-text-muted">{doc.data.owner}</span>
+                  )}
+                </div>
+                {reviewDue && (
+                  <div class="mt-0.5 text-sm text-text-muted">
+                    <span class={isPastDue ? "text-danger font-medium" : ""}>
+                      Review due {formatDate(reviewDue)}
+                      {isPastDue && " (overdue)"}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div class="flex shrink-0 items-center gap-3 pl-4">
+                <Badge variant="info">{sopCategoryLabel(doc.data.category)}</Badge>
+                <Badge variant={statusVariant(doc.data.status)}>{doc.data.status}</Badge>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

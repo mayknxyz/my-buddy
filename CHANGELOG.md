@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-22
+
+### Added
+
+- SOPs list page with computed review-due dates, category/status filters,
+  and summary stats (active, review overdue, drafts)
+- Journal list page with date-descending sort, type filter, this-week
+  count, and average energy computation
+- Knowledge index page aggregating knowledgeBase, knowledgeProjects, and
+  knowledgeClients with scope/category filters and stale detection (>90 days)
+- Stack aggregation page deriving tech usage from projects' `stack` field,
+  grouped by tech name and sorted by project count
+- Format helpers: `journalTypeLabel`, `sopCategoryLabel`,
+  `knowledgeScopeLabel`, `knowledgeCategoryLabel`
+- Keyboard shortcuts `g r` → SOPs, `g w` → Stack with help modal entries
+- Tech nav group in sidebar with Stack link
+- `sops` and `stack` SVG icon paths in sidebar
+
+### Changed
+
+- Sidebar navigation reorganized from flat section groups to discriminated-
+  union layout: ungrouped links (Dashboard, Knowledge, Journal, SOPs) →
+  separator → headed groups (CRM, Projects, Finance, Tech, Operations)
+- Knowledge and Journal moved from Operations group to ungrouped top-level
+- SOPs treated as cross-department, placed as ungrouped top-level link
+- Operations group trimmed to Assets, Subscriptions, Compliance only
+
 ## [0.3.0] - 2026-02-22
 
 ### Added
@@ -129,6 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI scaffolding tool via `bun create my-buddy`
 - MIT license
 
+[0.4.0]: https://github.com/mayknxyz/my-buddy/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mayknxyz/my-buddy/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/mayknxyz/my-buddy/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mayknxyz/my-buddy/compare/v0.2.0...v0.2.1

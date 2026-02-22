@@ -28,6 +28,8 @@ const CHORD_ROUTES: Record<string, string> = {
 	x: "/expenses",
 	y: "/payments",
 	v: "/calendar",
+	r: "/sops",
+	w: "/stack",
 };
 
 // WHY: Cache navigable items to avoid querySelectorAll on every j/k keypress.

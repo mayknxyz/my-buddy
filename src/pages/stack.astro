@@ -1,0 +1,124 @@
+---
+/**
+ * Tech stack aggregation page.
+ * Derives technology usage from the `stack` field across all projects.
+ * Groups by tech name and shows project count, active count, and project list.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { getCollection } from "astro:content";
+
+const statusFilter = Astro.url.searchParams.get("status");
+
+const allProjects = await getCollection("projects").catch(() => []);
+
+// Apply project status filter — controls which projects contribute to aggregation
+let projects = allProjects;
+if (statusFilter) projects = projects.filter((p) => p.data.status === statusFilter);
+
+// Aggregate tech stack across projects
+const stackMap = new Map<string, { id: string; title: string; status: string }[]>();
+
+for (const project of projects) {
+  for (const tech of project.data.stack) {
+    if (!stackMap.has(tech)) stackMap.set(tech, []);
+    stackMap.get(tech)!.push({
+      id: project.id,
+      title: project.data.title,
+      status: project.data.status,
+    });
+  }
+}
+
+// Convert to sorted entries
+interface StackEntry {
+  name: string;
+  projectCount: number;
+  activeCount: number;
+  projects: { id: string; title: string; status: string }[];
+}
+
+const stackEntries: StackEntry[] = [...stackMap.entries()]
+  .map(([name, prjs]) => ({
+    name,
+    projectCount: prjs.length,
+    activeCount: prjs.filter((p) => p.status === "active").length,
+    projects: prjs,
+  }))
+  .sort((a, b) => b.projectCount - a.projectCount);
+
+// Summary stats
+const uniqueTechCount = stackEntries.length;
+const uniqueProjectCount = new Set(projects.filter((p) => p.data.stack.length > 0).map((p) => p.id)).size;
+const mostUsed = stackEntries.length > 0 ? stackEntries[0].name : "—";
+
+const statusOptions = [
+  { value: "active", label: "Active" },
+  { value: "paused", label: "Paused" },
+  { value: "completed", label: "Completed" },
+  { value: "archived", label: "Archived" },
+];
+---
+
+<BaseLayout title="Stack — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Stack" count={stackEntries.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Stack" }]}>
+      <FilterBar>
+        <FilterSelect name="status" label="Project Status" options={statusOptions} selected={statusFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {stackEntries.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{uniqueTechCount}</div>
+          <div class="text-sm text-text-muted">Technologies</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{uniqueProjectCount}</div>
+          <div class="text-sm text-text-muted">Projects</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-lg font-bold">{mostUsed}</div>
+          <div class="text-sm text-text-muted">Most Used</div>
+        </div>
+      </div>
+    )}
+
+    {stackEntries.length === 0 ? (
+      <EmptyState title="No tech stack data found" description={statusFilter ? "Try changing the filter." : "Add stack entries to your projects to see aggregated data."} />
+    ) : (
+      <div class="space-y-1">
+        {stackEntries.map((entry) => {
+          const displayProjects = entry.projects.slice(0, 3);
+          const overflowCount = entry.projects.length - 3;
+
+          return (
+            <div
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-3">
+                  <span class="font-medium">{entry.name}</span>
+                  <span class="text-sm text-text-muted">{entry.projectCount} {entry.projectCount === 1 ? "project" : "projects"}</span>
+                  {entry.activeCount > 0 && (
+                    <Badge variant="success">{entry.activeCount} active</Badge>
+                  )}
+                </div>
+                <div class="mt-0.5 text-sm text-text-muted">
+                  {displayProjects.map((p) => p.title).join(", ")}
+                  {overflowCount > 0 && ` +${overflowCount} more`}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>
