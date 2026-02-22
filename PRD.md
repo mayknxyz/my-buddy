@@ -93,7 +93,6 @@ my-buddy/
 ├── CLAUDE.md
 ├── buddy.config.ts              # gitignored — instance-specific persona + R2 config
 ├── buddy.config.example.ts      # tracked — reference config for new instances
-├── buddy.instances.json
 ├── .claude/
 │   ├── settings.json
 │   └── commands/
@@ -220,8 +219,7 @@ my-buddy/
     ├── upload-file.sh
     ├── log-time.sh
     ├── migrate-v1.sh
-    ├── sync-upstream.sh
-    ├── instances.sh
+    ├── sync.sh
     └── sync-obsidian.sh
 ```
 
@@ -1379,8 +1377,7 @@ Templates include all required frontmatter fields with placeholder values and co
 | `scripts/new-task.sh` | `<project-slug> <task-slug>` | Scaffold task under project |
 | `scripts/log-time.sh` | `<project-slug> <hours> <date>` | Create timelog entry |
 | `scripts/migrate-v1.sh` | — | Migrate v1 content to v2 folder structure |
-| `scripts/sync-upstream.sh` | `[--dry-run]` | Distribute app updates from public repo to all registered instances |
-| `scripts/instances.sh` | `list \| add \| remove` | Manage registered instances in `buddy.instances.json` |
+| `scripts/sync.sh` | — | Pull upstream updates and merge (used in instances via `bun run sync`) |
 | `scripts/sync-obsidian.sh` | — | One-way sync: knowledge/base → Obsidian vault (read-only) |
 
 **Example upload flow:**
@@ -1405,10 +1402,7 @@ Templates include all required frontmatter fields with placeholder values and co
   "lint": "biome lint",
   "format": "biome format --write",
   "check": "biome check --write",
-  "sync": "scripts/sync-upstream.sh",
-  "instances": "scripts/instances.sh list",
-  "instances:add": "scripts/instances.sh add",
-  "instances:remove": "scripts/instances.sh remove"
+  "sync": "bash scripts/sync.sh"
 }
 ```
 
@@ -1427,68 +1421,64 @@ Templates include all required frontmatter fields with placeholder values and co
 
 ### 11.1 Overview
 
-my-buddy is open-source. The public repo (`my-buddy`) contains the app code, schemas, components, scripts, and example content. Real business data lives in private **instance repos** — one per business or use case. A local clone of the public repo acts as the hub for fetching upstream updates and distributing them to all instances.
+my-buddy-assistant is the open-source template repo. Each business gets its own private instance with an `upstream` remote pointing back to the template for updates.
 
 ```
-my-buddy (public, GitHub)
+my-buddy-assistant (public, GitHub)
     │
-    ├── git pull                          ← fetch latest app updates
-    │
-    └── bun sync                          ← push app code to all instances
-        ├── → ~/madali-buddy    (private) ← Madali LLC
-        ├── → ~/frostapp-buddy  (private) ← FrostAppDev
-        └── → ~/personal-buddy  (private) ← personal use
+    ├── upstream remote ──→ my-buddy      (private) ← user's instance
+    ├── upstream remote ──→ acme-buddy    (private) ← another instance
+    └── upstream remote ──→ personal-buddy(private) ← personal use
 ```
 
 ### 11.2 Repository Roles
 
-| Repo | Visibility | Contains | Issues/PRs | Git Remote |
-|---|---|---|---|---|
-| `my-buddy` | Public | App code + `content.example/` | Yes — all development tracked here | `origin` → GitHub public |
-| `madali-buddy` | Private | App code + real content | No — just a working instance | `origin` → GitHub private |
-| `frostapp-buddy` | Private | App code + real content | No — just a working instance | `origin` → GitHub private |
+| Repo | Visibility | Contains | Purpose |
+|---|---|---|---|
+| `my-buddy-assistant` | Public | App code + `content.example/` | Template — all development happens here |
+| User's instance | Private | App code + real `content/` | Working instance — business data lives here |
 
 ### 11.3 Content Strategy
 
 | Directory | Public Repo | Instance Repos |
 |---|---|---|
-| `content.example/` | Tracked — sample data (fake clients, invoices) for demo and scaffolding | Not present — removed during scaffolding |
+| `content.example/` | Tracked — sample data for demo and scaffolding | Present — used as scaffolding source |
 | `content/` | Gitignored — never committed to public repo | Tracked — real business data, pushed to private remote |
 
-### 11.4 Scaffolding
+### 11.4 Installation
 
-`bun create my-buddy` (or a setup script) creates a new instance:
+```bash
+curl -fsSL https://raw.githubusercontent.com/mayknxyz/my-buddy-assistant/main/install.sh | bash
+```
 
-1. Copies app code from the public repo
-2. Renames `content.example/` → `content/`
-3. Initializes a new git repo
-4. Prompts for instance name, accent color, and persona config
-5. User links to their own private remote: `git remote add origin <private-repo-url>`
+The install script:
+
+1. Clones the template repo (shallow)
+2. Strips git history — fresh `git init`
+3. Sets `upstream` remote to `my-buddy-assistant`
+4. Copies `content.example/` → `content/`
+5. Copies `buddy.config.example.ts` → `buddy.config.ts`
+6. Applies `CLAUDE.instance.md` as `CLAUDE.md`
+7. Creates `CLAUDE.local.md` for custom AI instructions
+8. Runs `bun install` and creates initial commit
+9. Optionally creates a private GitHub repo via `gh`
 
 ### 11.5 Sync Workflow
 
-The local clone of `my-buddy` is the distribution hub. Instance repos never talk to the public repo directly.
-
-**From the public repo (hub):**
+Each instance pulls updates directly from the upstream remote.
 
 ```bash
-# 1. Fetch latest app updates
-git pull
-
-# 2. Distribute to all registered instances
-bun sync
+bun run sync
 ```
 
-**`bun sync` reads `buddy.instances.json` and rsyncs app code:**
+The sync script (`scripts/sync.sh`):
 
-```json
-{
-  "instances": [
-    { "name": "madali-buddy", "path": "~/madali-buddy" },
-    { "name": "frostapp-buddy", "path": "~/frostapp-buddy" }
-  ]
-}
-```
+1. Guards against dirty working tree
+2. Fetches from `upstream`
+3. Shows incoming commits
+4. Merges `upstream/main`
+5. Auto-applies `CLAUDE.instance.md` as `CLAUDE.md` if changed
+6. Auto-runs `bun install` if `package.json` changed
 
 **Sync rules:**
 
@@ -1496,31 +1486,28 @@ bun sync
 |---|---|
 | `src/` | `content/` |
 | `scripts/` | `buddy.config.ts` |
-| `.templates/` | `buddy.instances.json` |
+| `.templates/` | `CLAUDE.local.md` |
 | `.claude/commands/` | `.git/` |
 | `docs/` | `node_modules/` |
 | `astro.config.mjs` | |
-| `src/content.config.ts` | |
-| `src/styles/` | |
 | `package.json` | |
 | `biome.jsonc` | |
 | `tsconfig.json` | |
+| `CLAUDE.instance.md` | |
 
-After sync, each instance runs `bun install` if `package.json` changed.
+### 11.6 AI Guardrails
 
-### 11.6 Instance Management CLI
+Instance `CLAUDE.md` (applied from `CLAUDE.instance.md`) restricts AI to:
 
-| Command | Description |
-|---|---|
-| `bun sync` | Distribute app updates to all registered instances |
-| `bun sync --dry-run` | Preview what would be synced without writing |
-| `bun instances` | List all registered instances with sync status |
-| `bun instances:add <name> <path>` | Register a new instance |
-| `bun instances:remove <name>` | Unregister an instance |
+- `content/` — business data
+- `buddy.config.ts` — instance configuration
+- `CLAUDE.local.md` — custom AI instructions (gitignored, survives syncs)
+
+This prevents accidental edits to app code that would cause merge conflicts on the next sync.
 
 ### 11.7 Future Consideration: Meta-Dashboard
 
-A meta-dashboard that aggregates data across all instances (total revenue, all tasks, cross-business overview) is a potential future feature but is **not in scope for v0.3.0**. Each instance has its own Astro dashboard. Cross-instance visibility can be explored once the core system is stable.
+A meta-dashboard that aggregates data across all instances is a potential future feature but is **not in scope for v0.3.0**. Each instance has its own Astro dashboard.
 
 ---
 
@@ -1583,7 +1570,7 @@ v1 instance content maps to v2 as follows:
 | Phase 9 — R2 Integration | upload scripts, file metadata, wrangler config | High | Phase 1 (parallel with Phase 4) |
 | Phase 10 — Dashboard | All routes, widgets, relation queries, expiry alerts | Ongoing | Grows with each phase |
 | Phase 11 — Claude Code Commands | CRUD commands, session commands, daily ops, reporting | Ongoing | Commands added per phase as collections land |
-| Phase 12 — Multi-Instance | Scaffolding CLI (`bun create my-buddy`), sync script, `content.example/`, instance management | Medium | Phase 1 (can start anytime after) |
+| Phase 12 — Multi-Instance | `install.sh`, `scripts/sync.sh`, `CLAUDE.instance.md`, `content.example/` | Medium | Phase 1 (can start anytime after) |
 | Phase 13 — Migration | v1 data migration script, validation, cleanup | Low | Phase 3 (needs CRM + Projects schemas for validation) |
 
 ---
@@ -1758,7 +1745,7 @@ The entry point for new users and contributors. Covers getting started, architec
 | Individual recurring meeting files | Flat-file simplicity — no recurrence engine, link via `recurring-id` |
 | Templates in `.templates/` | Single source of truth for content scaffolding, used by CLI scripts and Claude Code commands |
 | Public repo + private instances | Open-source app code with issues/PRs on public repo; real business data in private instance repos — one per business |
-| Hub-based sync (not per-instance upstream) | Local clone of public repo distributes updates to instances via rsync — no git remote entanglement in instances |
+| Upstream-remote sync (not hub-based) | Each instance has an `upstream` remote pointing to the public template repo — standard Git workflow, no intermediary hub |
 | `content.example/` for scaffolding | Sample data in public repo serves as demo and scaffolding source; renamed to `content/` in instances |
 | CLI-only instance management (v0.3.0) | Meta-dashboard across instances is a future consideration — each instance has its own Astro dashboard |
 

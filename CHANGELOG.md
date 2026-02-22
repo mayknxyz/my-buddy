@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-23
+
+### Added
+
+- `install.sh` — curl-installable script for creating fresh instances with
+  upstream remote, scaffolded content/config, and instance CLAUDE.md
+- `scripts/sync.sh` — fetch and merge upstream changes with dirty-tree guard,
+  auto-apply CLAUDE.instance.md, and auto-reinstall on package.json changes
+- `CLAUDE.instance.md` — guardrailed AI context restricting instances to
+  `content/` and `buddy.config.ts` only
+- `CLAUDE.local.md` pattern — gitignored file for user custom AI instructions,
+  preserved across syncs
+- ADR 007: upstream-remote architecture over hub-based sync
+- `bun run sync` package script
+
+### Changed
+
+- Replace hub-based sync model (ADR 005) with upstream-remote architecture
+- Rewrite `docs/multi-instance.md` for install + upstream-remote model
+- Rewrite README.md install/update sections for new workflow
+- Update all repo references from `my-buddy` to `my-buddy-assistant`
+- Update PRD Section 11 for upstream-remote model
+
+### Removed
+
+- `buddy.instances.json` registry concept
+- `bun instances` / `bun sync` commands (replaced by `bun run sync`)
+- `scripts/sync-upstream.sh` and `scripts/instances.sh` references
+- Hub-based sync architecture (ADR 005 marked superseded)
+
 ## [0.4.0] - 2026-02-22
 
 ### Added
@@ -153,9 +183,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dark theme with CSS custom properties and WCAG AA focus indicators
 - Tailwind CSS v4 with `@tailwindcss/typography` for prose styling
 - Biome for linting and formatting
-- CLI scaffolding tool via `bun create my-buddy`
+- CLI scaffolding tool via `install.sh`
 - MIT license
 
+[0.5.0]: https://github.com/mayknxyz/my-buddy/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mayknxyz/my-buddy/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mayknxyz/my-buddy/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/mayknxyz/my-buddy/compare/v0.2.1...v0.2.2

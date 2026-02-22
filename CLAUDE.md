@@ -1,4 +1,7 @@
-# my-buddy
+# my-buddy-assistant (Developer Context)
+
+This is the **public template repo**. If you're working on an instance,
+see `CLAUDE.instance.md` instead — it restricts AI to `content/` and config.
 
 ## Stack
 
@@ -130,8 +133,7 @@ Three-tier convention:
 - `./scripts/new-task.sh <project-slug> <task-slug>`
 - `./scripts/upload-file.sh <namespace-slug> <file-path> <output-slug>`
 - `./scripts/log-time.sh <project-slug> <hours> <date>`
-- `./scripts/sync-upstream.sh [--dry-run]`
-- `./scripts/instances.sh list | add | remove`
+- `./scripts/sync.sh` — pull updates from upstream (used in instances)
 
 ## Key Files
 

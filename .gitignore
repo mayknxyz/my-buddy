@@ -8,7 +8,9 @@ dist/
 # Instance data — gitignored in public repo, tracked in instances
 content/
 buddy.config.ts
-buddy.instances.json
+
+# User-specific AI instructions (preserved across syncs)
+CLAUDE.local.md
 
 # Generated data
 src/data/*.json
