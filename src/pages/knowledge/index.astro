@@ -1,0 +1,194 @@
+---
+/**
+ * Knowledge base index page.
+ * Aggregates knowledgeBase, knowledgeProjects, and knowledgeClients
+ * into a unified list with scope and category filters.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import {
+  formatDate,
+  knowledgeScopeLabel,
+  knowledgeCategoryLabel,
+} from "@/lib/format";
+import { getCollection } from "astro:content";
+
+const scopeFilter = Astro.url.searchParams.get("scope");
+const categoryFilter = Astro.url.searchParams.get("category");
+
+// Fetch all 3 knowledge collections in parallel
+const [base, projectKb, clientKb] = await Promise.all([
+  getCollection("knowledgeBase").catch(() => []),
+  getCollection("knowledgeProjects").catch(() => []),
+  getCollection("knowledgeClients").catch(() => []),
+]);
+
+// Normalize into a unified shape
+interface NormalizedKnowledge {
+  id: string;
+  title: string;
+  scope: "base" | "projects" | "clients";
+  category: string;
+  tags: string[];
+  lastReviewed: Date | null;
+  sortKey: string;
+}
+
+const allArticles: NormalizedKnowledge[] = [];
+
+for (const b of base) {
+  allArticles.push({
+    id: `base-${b.id}`,
+    title: b.data.title,
+    scope: "base",
+    category: b.data.category,
+    tags: b.data.tags,
+    lastReviewed: b.data["last-reviewed"] ?? null,
+    sortKey: b.data.title.toLowerCase(),
+  });
+}
+
+for (const p of projectKb) {
+  allArticles.push({
+    id: `projects-${p.id}`,
+    title: p.data.title,
+    scope: "projects",
+    category: p.data.category,
+    tags: p.data.tags,
+    lastReviewed: p.data["last-reviewed"] ?? null,
+    sortKey: p.data.title.toLowerCase(),
+  });
+}
+
+for (const c of clientKb) {
+  allArticles.push({
+    id: `clients-${c.id}`,
+    title: c.data.title,
+    scope: "clients",
+    category: c.data.category,
+    tags: c.data.tags,
+    lastReviewed: c.data["last-reviewed"] ?? null,
+    sortKey: c.data.title.toLowerCase(),
+  });
+}
+
+// Apply filters
+let filtered = allArticles;
+if (scopeFilter) filtered = filtered.filter((a) => a.scope === scopeFilter);
+if (categoryFilter) filtered = filtered.filter((a) => a.category === categoryFilter);
+
+// Sort alphabetically by title
+filtered.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+// Summary stats
+const now = new Date();
+const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
+
+// WHY: Precompute stale check to avoid < in template (Astro parser gotcha)
+const staleIds = new Set(
+  filtered
+    .filter((a) => {
+      if (!a.lastReviewed) return true;
+      return new Date(a.lastReviewed).getTime() < ninetyDaysAgo.getTime();
+    })
+    .map((a) => a.id)
+);
+
+const staleCount = staleIds.size;
+const baseCount = filtered.filter((a) => a.scope === "base").length;
+const projectsCount = filtered.filter((a) => a.scope === "projects").length;
+const clientsCount = filtered.filter((a) => a.scope === "clients").length;
+
+// Dynamic category options built from data
+const categoryOptions = [...new Set(allArticles.map((a) => a.category))]
+  .filter(Boolean)
+  .sort()
+  .map((c) => ({ value: c, label: knowledgeCategoryLabel(c) }));
+
+const scopeOptions = [
+  { value: "base", label: "Base" },
+  { value: "projects", label: "Projects" },
+  { value: "clients", label: "Clients" },
+];
+---
+
+<BaseLayout title="Knowledge — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Knowledge" count={filtered.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Knowledge" }]}>
+      <FilterBar>
+        <FilterSelect name="scope" label="Scope" options={scopeOptions} selected={scopeFilter ?? undefined} />
+        <FilterSelect name="category" label="Category" options={categoryOptions} selected={categoryFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {filtered.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{filtered.length}</div>
+          <div class="text-sm text-text-muted">Total Articles</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class={`text-2xl font-bold tabular-nums ${staleCount > 0 ? "text-warning" : ""}`}>{staleCount}</div>
+          <div class="text-sm text-text-muted">Stale</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-sm font-bold tabular-nums">Base {baseCount} · Projects {projectsCount} · Clients {clientsCount}</div>
+          <div class="text-sm text-text-muted">By Scope</div>
+        </div>
+      </div>
+    )}
+
+    {filtered.length === 0 ? (
+      <EmptyState title="No knowledge articles found" description={scopeFilter || categoryFilter ? "Try changing the filters." : "Add your first knowledge article to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {filtered.map((article) => {
+          const isStale = staleIds.has(article.id);
+          const displayTags = article.tags.slice(0, 3);
+          const overflowCount = article.tags.length - 3;
+
+          return (
+            <div
+              class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{article.title}</span>
+                  <Badge variant="accent">{knowledgeScopeLabel(article.scope)}</Badge>
+                  {article.category && (
+                    <Badge variant="info">{knowledgeCategoryLabel(article.category)}</Badge>
+                  )}
+                </div>
+                <div class="mt-0.5 flex items-center gap-2 text-sm text-text-muted">
+                  {article.lastReviewed ? (
+                    <span class={isStale ? "text-warning" : ""}>
+                      Reviewed {formatDate(article.lastReviewed)}
+                    </span>
+                  ) : (
+                    <span class="text-warning">Never reviewed</span>
+                  )}
+                  {displayTags.length > 0 && (
+                    <span class="flex items-center gap-1">
+                      <span class="text-text-muted">·</span>
+                      {displayTags.map((tag) => (
+                        <span class="rounded bg-surface-2 px-1.5 py-0.5 text-xs">{tag}</span>
+                      ))}
+                      {overflowCount > 0 && (
+                        <span class="text-xs text-text-muted">+{overflowCount} more</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </main>
+</BaseLayout>

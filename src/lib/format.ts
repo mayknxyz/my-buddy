@@ -267,6 +267,49 @@ export function assetTypeLabel(type: string): string {
 	return map[type] ?? type;
 }
 
+/** Convert a journal type slug to a human-readable label. */
+export function journalTypeLabel(type: string): string {
+	const map: Record<string, string> = {
+		daily: "Daily",
+		weekly: "Weekly",
+		monthly: "Monthly",
+	};
+	return map[type] ?? type;
+}
+
+/** Convert a SOP category slug to a human-readable label. */
+export function sopCategoryLabel(category: string): string {
+	const map: Record<string, string> = {
+		engineering: "Engineering",
+		operations: "Operations",
+		sales: "Sales",
+		onboarding: "Onboarding",
+		other: "Other",
+	};
+	return map[category] ?? category;
+}
+
+/** Convert a knowledge scope key to a human-readable label. */
+export function knowledgeScopeLabel(scope: string): string {
+	const map: Record<string, string> = {
+		base: "Base",
+		projects: "Project",
+		clients: "Client",
+	};
+	return map[scope] ?? scope;
+}
+
+/** Convert a knowledge category slug to a human-readable label. */
+export function knowledgeCategoryLabel(category: string): string {
+	const map: Record<string, string> = {
+		dev: "Development",
+		business: "Business",
+		tools: "Tools",
+		personal: "Personal",
+	};
+	return map[category] ?? category;
+}
+
 /** Extract the client slug from a folder-namespaced content ID. */
 export function clientSlugFromId(id: string): string {
 	// "acme-corp/index" → "acme-corp"

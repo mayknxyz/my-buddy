@@ -1,0 +1,129 @@
+---
+/**
+ * Journal entries list page.
+ * Displays daily, weekly, and monthly reflections sorted by date descending.
+ */
+import BaseLayout from "@/components/templates/BaseLayout.astro";
+import PageHeader from "@/components/templates/PageHeader.astro";
+import Badge from "@/components/atoms/Badge.astro";
+import FilterSelect from "@/components/atoms/FilterSelect.astro";
+import FilterBar from "@/components/molecules/FilterBar.astro";
+import EmptyState from "@/components/molecules/EmptyState.astro";
+import { formatDate, journalTypeLabel } from "@/lib/format";
+import { getCollection } from "astro:content";
+
+type BadgeVariant = "success" | "warning" | "danger" | "info" | "neutral" | "accent";
+
+const typeFilter = Astro.url.searchParams.get("type");
+
+const allEntries = await getCollection("journal").catch(() => []);
+
+// Apply filters
+let entries = allEntries;
+if (typeFilter) entries = entries.filter((e) => e.data.type === typeFilter);
+
+// Sort by date descending (most recent first)
+entries = entries.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+
+// Summary: This week's entries (ISO week Mon–Sun)
+const now = new Date();
+const dayOfWeek = now.getDay();
+// WHY: ISO week starts Monday. getDay() returns 0=Sun, 1=Mon...
+// Shift so Monday=0, Sunday=6, then subtract to get Monday 00:00
+const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+const weekStart = new Date(now);
+weekStart.setHours(0, 0, 0, 0);
+weekStart.setDate(weekStart.getDate() - mondayOffset);
+const weekEnd = new Date(weekStart);
+weekEnd.setDate(weekEnd.getDate() + 7);
+
+const thisWeekCount = entries.filter((e) => {
+  const d = new Date(e.data.date).getTime();
+  return d >= weekStart.getTime() && d < weekEnd.getTime();
+}).length;
+
+// Summary: Average energy
+const energyValues: Record<string, number> = { high: 3, medium: 2, low: 1 };
+const energyEntries = entries.filter((e) => e.data.energy);
+const avgEnergy = energyEntries.length > 0
+  ? energyEntries.reduce((sum, e) => sum + (energyValues[e.data.energy!] ?? 0), 0) / energyEntries.length
+  : null;
+const avgEnergyLabel = avgEnergy !== null
+  ? (avgEnergy >= 2.5 ? "High" : avgEnergy >= 1.5 ? "Medium" : "Low")
+  : "—";
+
+// WHY: Energy-as-good conflicts with statusVariant where high=danger (priority).
+// Page-local variant keeps the semantic mapping correct for journal context.
+function energyVariant(e: string | null): BadgeVariant {
+  if (!e) return "neutral";
+  const map: Record<string, BadgeVariant> = { high: "success", medium: "warning", low: "danger" };
+  return map[e] ?? "neutral";
+}
+
+// Precompute blockers > 0 check to avoid < in template
+const hasBlockersIds = new Set(
+  entries.filter((e) => e.data.blockers.length > 0).map((e) => e.id)
+);
+
+const typeOptions = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+---
+
+<BaseLayout title="Journal — my-buddy">
+  <main class="mx-auto max-w-6xl p-6">
+    <PageHeader title="Journal" count={entries.length} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Journal" }]}>
+      <FilterBar>
+        <FilterSelect name="type" label="Type" options={typeOptions} selected={typeFilter ?? undefined} />
+      </FilterBar>
+    </PageHeader>
+
+    {/* Summary bar */}
+    {entries.length > 0 && (
+      <div class="mb-6 flex gap-4">
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{entries.length}</div>
+          <div class="text-sm text-text-muted">Total Entries</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class="text-2xl font-bold tabular-nums">{thisWeekCount}</div>
+          <div class="text-sm text-text-muted">This Week</div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface-1 px-4 py-3">
+          <div class={`text-2xl font-bold tabular-nums`}>{avgEnergyLabel}</div>
+          <div class="text-sm text-text-muted">Avg Energy</div>
+        </div>
+      </div>
+    )}
+
+    {entries.length === 0 ? (
+      <EmptyState title="No journal entries found" description={typeFilter ? "Try changing the filter." : "Add your first journal entry to get started."} />
+    ) : (
+      <div class="space-y-1">
+        {entries.map((entry) => (
+          <div
+            class="flex items-center justify-between rounded-lg border border-transparent px-4 py-3 hover:border-border hover:bg-surface-1"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-3">
+                <span class="font-medium">{formatDate(entry.data.date)}</span>
+                <Badge variant="info">{journalTypeLabel(entry.data.type)}</Badge>
+                {entry.data.energy && (
+                  <Badge variant={energyVariant(entry.data.energy)}>{entry.data.energy}</Badge>
+                )}
+              </div>
+            </div>
+            <div class="flex shrink-0 items-center gap-3 pl-4 text-sm">
+              <span class="text-text-muted">{entry.data.highlights.length} highlights</span>
+              {hasBlockersIds.has(entry.id) && (
+                <span class="text-danger font-medium">{entry.data.blockers.length} blockers</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </main>
+</BaseLayout>
